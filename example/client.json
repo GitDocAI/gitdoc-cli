@@ -1,0 +1,101 @@
+{
+  "defaultVersion": "v10",
+  "versions": ["v10","v11"],
+        "v10": {
+      "index":"v10index.mdx",
+      "tabs": [
+        {
+          "group": "Grupo1",
+          "pages": [
+            "apireference/v10/page1.mdx",
+            "apireference/v10/page2.mdx",
+            "apireference/v10/page3.mdx"
+          ]
+        },
+        {
+          "group": "Grupo2",
+          "pages": [
+            "containers/v10/index1.mdx",
+            "containers/v10/intel.mdx"
+          ]
+        }
+      ],
+      "theme": "mint",
+      "banner": "Documentación v10",
+      "github": "https://github.com/yhvcorp/proyecto-v1",
+      "logo": {
+        "light": "https://cdn.example.com/v1-logo-light.png",
+        "dark": "https://cdn.example.com/v1-logo-dark.png"
+      },
+      "name": "Proyecto V1",
+      "colors": {
+        "color": {
+          "hue": {
+            "dark": 20,
+            "light": 45
+          },
+          "saturation": {
+            "dark": 70,
+            "light": 50
+          },
+          "lightness": {
+            "dark": 30,
+            "light": 90
+          }
+        },
+        "backgroundColor": {
+          "dark": "#1A1A2E",
+          "light": "#FFFFFF"
+        }
+      }
+    },
+    "v11": {
+      "index":"v11index.mdx",
+      "tabs": [
+        {
+          "group": "referencia",
+          "pages": [
+            "apireference/v11/paghe1.md",
+            "apireference/v11/title.mdx",
+            "apireference/v11/title2.mdx"
+          ]
+        },
+        {
+          "group": "tutoriales",
+          "pages": [
+            "containers/v11/app.mdx",
+            "containers/v11/app2.mdx"
+          ]
+        }
+      ],
+      "theme": "default",
+      "banner": "Nuevas características v2",
+      "github": "https://github.com/yhvcorp/proyecto-v2",
+      "logo": {
+        "light": "https://cdn.example.com/v2-logo-light.png",
+        "dark": "https://cdn.example.com/v2-logo-dark.png"
+      },
+      "name": "Proyecto V2",
+      "colors": {
+        "color": {
+          "hue": {
+            "dark": 250,
+            "light": 60
+          },
+          "saturation": {
+            "dark": 50,
+            "light": 30
+          },
+          "lightness": {
+            "dark": 25,
+            "light": 80
+          }
+        },
+        "backgroundColor": {
+          "dark": "#0B0C10",
+          "light": "#E0F7FA"
+        }
+      }
+    }
+
+}
