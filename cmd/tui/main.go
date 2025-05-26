@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -38,6 +39,7 @@ func main() {
 		fmt.Println(error)
 		return
 	}
+
 	cmd := exec.Command("npm", "run", "dev")
 	cmd.Dir = config.ProjectPath // Sets the working directory
 	cmd.Stdout = os.Stdout
