@@ -7,30 +7,41 @@ import (
 
 	service_adapter "github.com/YHVCorp/DockitAi/cli/internals/application/webconfig"
 	"github.com/YHVCorp/DockitAi/cli/internals/config"
+	"github.com/YHVCorp/DockitAi/cli/internals/infraestructure/initializer"
 	repository_adapter "github.com/YHVCorp/DockitAi/cli/internals/infraestructure/webconfig"
 	"github.com/YHVCorp/DockitAi/cli/internals/interface/controllers/webconfig"
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("Must Provide CLient Path")
+	config := config.NewConfig()
+
+	client_path, err := os.Getwd()
+	if err != nil {
+		fmt.Printf("An error ocurred: %s", err.Error())
 		return
 	}
 
-	config := config.NewConfig()
-	client_path := os.Args[1]
+	initializer := initializer.NewInitializer(&config)
+	if err := initializer.CheckEnvironment(); err != nil {
+		fmt.Println(err)
+		if err := initializer.SetEnvironment(); err != nil {
+			fmt.Println(err)
+			return
+		}
+	}
+
 	wc_service := service_adapter.NewWebConfigAdapter()
 	wc_repo := repository_adapter.NewWebConfigRepository(config.ProjectPath, client_path)
 	wc_controller := webconfig.NewWebConfigController(wc_repo, wc_service)
-	error := wc_controller.InitializeWebConfig(client_path + "/client.json")
+	error := wc_controller.InitializeWebConfig(client_path + "/site.config.json")
 	if error != nil {
 		fmt.Println(error)
 		return
 	}
 	cmd := exec.Command("npm", "run", "dev")
-	cmd.Dir = config.ProjectPath // Establece el working directory
-	cmd.Stdout = os.Stdout       // Muestra la salida en consola
-	cmd.Stderr = os.Stderr       // Muestra errores en consola
+	cmd.Dir = config.ProjectPath // Sets the working directory
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
 		fmt.Println("Error al correr el proyecto:", err)
