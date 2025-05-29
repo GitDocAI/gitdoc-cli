@@ -1,10 +1,11 @@
 package main
 
 import (
-	"flag"
+	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 
 	service_adapter "github.com/YHVCorp/DockitAi/cli/internals/application/webconfig"
 	"github.com/YHVCorp/DockitAi/cli/internals/config"
@@ -40,12 +41,40 @@ func main() {
 		return
 	}
 
-	cmd := exec.Command("npm", "run", "dev")
-	cmd.Dir = config.ProjectPath // Sets the working directory
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	fmt.Println("Start project building....")
+	build_cmd := exec.Command("npm", "run", "build")
+	build_cmd.Dir = config.ProjectPath // Sets the working directory
 
-	if err := cmd.Run(); err != nil {
-		fmt.Println("Error al correr el proyecto:", err)
+	if err := build_cmd.Run(); err != nil {
+		fmt.Println("Error building the project", err)
+		return
+	}
+	fmt.Println("Project builded start running....")
+
+	cmd := exec.Command("npm", "run", "start")
+	cmd.Dir = config.ProjectPath // Sets the working directory
+	check_running_port(cmd)
+	cmd.Wait()
+}
+
+func check_running_port(cmd *exec.Cmd) {
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		return
+	}
+
+	if err := cmd.Start(); err != nil {
+		fmt.Println("Error running the project:", err)
+		return
+	}
+
+	scanner := bufio.NewScanner(stdoutPipe)
+	re := regexp.MustCompile(`http://localhost:(\d+)`)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if match := re.FindStringSubmatch(line); match != nil {
+			fmt.Printf("Project running on : http://localhost:%s", match[1])
+			return
+		}
 	}
 }

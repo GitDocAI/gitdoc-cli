@@ -1,6 +1,54 @@
 {
   "defaultVersion": "v10",
-  "versions": ["v10","v11"],
+  "versions": ["v10","v11","v1"],
+  "v1":{
+    "index":"v1index.mdx",
+      "tabs": [
+        {
+          "group": "Elementales",
+          "pages": [
+            "apireference/v10/page1.mdx",
+            "apireference/v10/page2.mdx",
+            "apireference/v10/page3.mdx"
+          ]
+        },
+        {
+          "group": "Contenedores",
+          "pages": [
+            "containers/v10/index1.mdx",
+            "containers/v10/intel.mdx"
+          ]
+        }
+      ],
+      "theme": "default",
+      "banner": "Documentación v10 disponible",
+      "github": "https://github.com/yhvcorp/proyecto-v1",
+      "logo": {
+        "light": "https://cdn.example.com/v1-logo-light.png",
+        "dark": "https://cdn.example.com/v1-logo-dark.png"
+      },
+      "name": "Proyecto V1",
+      "colors": {
+        "color": {
+          "hue": {
+            "dark": 10,
+            "light": 5
+          },
+          "saturation": {
+            "dark": 10,
+            "light": 40
+          },
+          "lightness": {
+            "dark": 10,
+            "light": 60
+          }
+        },
+        "backgroundColor": {
+          "dark": "#1B1FAE",
+          "light": "#ABCDEF"
+        }
+      }
+  },
         "v10": {
       "index":"v10index.mdx",
       "tabs": [
