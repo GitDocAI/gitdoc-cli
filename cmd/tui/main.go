@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag" // Import the flag package
 	"fmt"
 	"os"
 	"os/exec"
@@ -15,12 +16,31 @@ import (
 )
 
 func main() {
+	// Define the flags
+	inputPath := flag.String("input", "", "Determines the source code directory (defaults to current path)")
+	outputPath := flag.String("output", "", "Determines the directory where the results will be saved")
+	replaceOnly := flag.Bool("replace", false, "Generates app data without running the application")
+	helpFlag := flag.Bool("help", false, "Displays help message for available flags")
+
+	// Parse the flags
+	flag.Parse()
+
+	if *helpFlag {
+		fmt.Println("Usage of dokcitAi-cli:")
+		flag.PrintDefaults()
+		return
+	}
+
 	config := config.NewConfig()
 
+	// Determine client_path based on --input flag
 	client_path, err := os.Getwd()
 	if err != nil {
-		fmt.Printf("An error ocurred: %s", err.Error())
+		fmt.Printf("An error occurred: %s\n", err.Error())
 		return
+	}
+	if *inputPath != "" {
+		client_path = *inputPath
 	}
 
 	initializer := initializer.NewInitializer(&config)
@@ -32,12 +52,23 @@ func main() {
 		}
 	}
 
+	savepath := config.ProjectPath
+	if *outputPath != "" {
+		savepath = *outputPath
+	}
 	wc_service := service_adapter.NewWebConfigAdapter()
-	wc_repo := repository_adapter.NewWebConfigRepository(config.ProjectPath, client_path)
+	// Pass outputPath to the repository if needed, or handle it later for saving results
+	wc_repo := repository_adapter.NewWebConfigRepository(savepath, client_path)
 	wc_controller := webconfig.NewWebConfigController(wc_repo, wc_service)
+
 	error := wc_controller.InitializeWebConfig(client_path + "/site.config.json")
 	if error != nil {
 		fmt.Println(error)
+		return
+	}
+
+	if *replaceOnly {
+		fmt.Println("App data generated successfully. Application will not be run due to --replace flag.")
 		return
 	}
 
@@ -49,7 +80,7 @@ func main() {
 		fmt.Println("Error building the project", err)
 		return
 	}
-	fmt.Println("Project builded start running....")
+	fmt.Println("Project built, starting run....")
 
 	cmd := exec.Command("npm", "run", "start")
 	cmd.Dir = config.ProjectPath // Sets the working directory
@@ -73,7 +104,7 @@ func check_running_port(cmd *exec.Cmd) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		if match := re.FindStringSubmatch(line); match != nil {
-			fmt.Printf("Project running on : http://localhost:%s", match[1])
+			fmt.Printf("Project running on: http://localhost:%s\n", match[1])
 			return
 		}
 	}
