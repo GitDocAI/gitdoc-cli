@@ -25,18 +25,29 @@ publishers:
     ids:
       - default
     cmd: |
-      mkdir -p npm-package/bin
+      set -e
       
-      cp {{ .ArtifactPath }} npm-package/bin/dockitai-cli
-      chmod +x npm-package/bin/dockitai-cli
+      PACKAGE_DIR="npm-package-{{ .Os }}-{{ .Arch }}"
+      rm -rf "$PACKAGE_DIR"
+      mkdir -p "$PACKAGE_DIR/bin"
       
-      cat > npm-package/package.json << 'EOF'
+      if [ "{{ .Os }}" = "windows" ]; then
+        unzip -j "{{ .ArtifactPath }}" -d "$PACKAGE_DIR/bin/"
+        BINARY_NAME="dockitai-cli.exe"
+      else
+        tar -xzf "{{ .ArtifactPath }}" -C "$PACKAGE_DIR/bin/" --strip-components=0
+        BINARY_NAME="dockitai-cli"
+      fi
+      
+      chmod +x "$PACKAGE_DIR/bin/$BINARY_NAME"
+      
+      cat > "$PACKAGE_DIR/package.json" << EOF
       {
-        "name": "dockitai-cli",
+        "name": "dockitai-cli-{{ .Os }}-{{ .Arch }}",
         "version": "{{ .Version }}",
-        "description": "DockitAI CLI tool",
+        "description": "DockitAI CLI tool for {{ .Os }} {{ .Arch }}",
         "bin": {
-          "dockitai-cli": "./bin/dockitai-cli"
+          "dockitai-cli": "./bin/$BINARY_NAME"
         },
         "files": [
           "bin/"
@@ -51,11 +62,12 @@ publishers:
           "type": "git",
           "url": "https://github.com/{{ .Env.GITHUB_REPOSITORY_OWNER }}/{{ .Env.GITHUB_REPOSITORY }}.git"
         },
-        "license": "Apache-2.0",
+        "license": "Apache-2.0"
       }
       EOF
       
-      cd npm-package
+      cd "$PACKAGE_DIR"
+      echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
       npm publish --access public
     env:
       - NPM_TOKEN={{ .Env.NPM_TOKEN }}
