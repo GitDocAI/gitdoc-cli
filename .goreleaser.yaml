@@ -38,24 +38,22 @@ publishers:
       
       chmod +x "$PACKAGE_DIR/bin/"*
       
-      cat > "$PACKAGE_DIR/package.json" << 'EOF'
-      {
-        "name": "dockitai-cli-{{ .Os }}-{{ .Arch }}",
-        "version": "{{ .Version }}",
-        "description": "DockitAI CLI tool for {{ .Os }} {{ .Arch }}",
-        "bin": {
-          "dockitai-cli": "./bin/{{ if eq .Os \"windows\" }}dockitai-cli.exe{{ else }}dockitai-cli{{ end }}"
+      echo "{
+        \"name\": \"dockitai-cli-{{ .Os }}-{{ .Arch }}\",
+        \"version\": \"{{ .Version }}\",
+        \"description\": \"DockitAI CLI tool for {{ .Os }} {{ .Arch }}\",
+        \"bin\": {
+          \"dockitai-cli\": \"./bin/$BINARY_NAME\"
         },
-        "files": ["bin/"],
-        "os": ["{{ .Os }}"],
-        "cpu": ["{{ .Arch }}"],
-        "repository": {
-          "type": "git",
-          "url": "https://github.com/{{ .Env.GITHUB_REPOSITORY_OWNER }}/{{ .Env.GITHUB_REPOSITORY }}.git"
+        \"files\": [\"bin/\"],
+        \"os\": [\"{{ .Os }}\"],
+        \"cpu\": [\"{{ .Arch }}\"],
+        \"repository\": {
+          \"type\": \"git\",
+          \"url\": \"https://github.com/{{ .Env.GITHUB_REPOSITORY_OWNER }}/{{ .Env.GITHUB_REPOSITORY }}.git\"
         },
-        "license": "Apache-2.0"
-      }
-      EOF
+        \"license\": \"Apache-2.0\"
+      }" > "$PACKAGE_DIR/package.json"
       
       cd "$PACKAGE_DIR"
       echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
