@@ -1,0 +1,46 @@
+package cmd
+
+import (
+	"fmt"
+
+	"github.com/YHVCorp/DockitAICLI/config"
+	"github.com/YHVCorp/DockitAICLI/utils"
+)
+
+func Deploy(deployInput, deployOutput string) error {
+	err := config.LoadConfig(deployInput, deployOutput)
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	err = DownloadThemes(false)
+	if err != nil {
+		return fmt.Errorf("failed to download themes: %w", err)
+	}
+
+	cnf := config.GetConfig()
+	exists, err := utils.CreatePathIfNotExist(cnf.OutputPath)
+	if err != nil {
+		return fmt.Errorf("failed to create output path: %w", err)
+	}
+	if exists {
+		err := utils.ClearFolderExcept(cnf.OutputPath, config.ClearExceptionDirs)
+		if err != nil {
+			return fmt.Errorf("failed to clear output path: %w", err)
+		}
+	}
+
+	err = CopyTheme(cnf.OutputPath, cnf.SiteConfig.Theme)
+	if err != nil {
+		return fmt.Errorf("failed to copy theme: %w", err)
+	}
+
+	err = ReplaceComponents(*cnf)
+	if err != nil {
+		return fmt.Errorf("failed to replace components: %w", err)
+	}
+
+	fmt.Println("Deployment completed successfully.")
+
+	return nil
+}
