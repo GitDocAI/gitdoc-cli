@@ -1,0 +1,26 @@
+{
+  "name": "dockitai-cli",
+  "version": "$VERSION",
+  "description": "DockitAI CLI tool",
+  "bin": {
+    "dockitai-cli": "./dockitai-cli"
+  },
+  "files": [
+    "install.js",
+    "dist/",
+    "dockitai-cli",
+    "dockitai-cli.exe"
+  ],
+  "scripts": {
+    "postinstall": "node install.js",
+    "preuninstall": "node uninstall.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YHVCorp/DockitAICLI.git"
+  },
+  "keywords": ["cli", "dockitai"],
+  "author": "Yorjander Hernandez",
+  "license": "Apache-2.0",
+  "preferGlobal": true
+}

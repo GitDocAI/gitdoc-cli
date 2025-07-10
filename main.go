@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/YHVCorp/DockitAICLI/cmd"
+	"github.com/YHVCorp/DockitAICLI/config"
 	"github.com/YHVCorp/DockitAICLI/utils"
 	"github.com/spf13/cobra"
 )
@@ -25,7 +26,8 @@ Available commands:
 
 - serve: Starts a local server to preview the documentation site
 - init-sample: Initializes a sample project structure
-- update-themes: Downloads or updates the default themes`,
+- update-themes: Downloads or updates the default themes
+- version: Displays the current version of DockitAI CLI`,
 		PersistentPreRunE: func(command *cobra.Command, args []string) error {
 			return cmd.ValidateSystemRequirements()
 		},
@@ -79,6 +81,17 @@ Available commands:
 		},
 	}
 	rootCmd.AddCommand(updateThemesCmd)
+
+	// ################### Version Command ###################
+	// Add the version command to the root command
+	versionCmd := &cobra.Command{
+		Use:   "version",
+		Short: "Display the current version of DockitAI CLI",
+		Run: func(command *cobra.Command, args []string) {
+			fmt.Printf("DockitAI CLI version: %s\n", config.VERSION)
+		},
+	}
+	rootCmd.AddCommand(versionCmd)
 
 	// ################### Execute the Root Command ###################
 	// Execute the root command, which will parse the flags and run the appropriate command

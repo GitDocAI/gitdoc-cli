@@ -8,22 +8,6 @@ on:
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
-    
-    strategy:
-      matrix:
-        include:
-          - goos: linux
-            goarch: amd64
-          - goos: linux
-            goarch: arm64
-          - goos: darwin
-            goarch: amd64
-          - goos: darwin
-            goarch: arm64
-          - goos: windows
-            goarch: amd64
-          - goos: windows
-            goarch: arm64
 
     steps:
       - uses: actions/checkout@v4
@@ -38,86 +22,27 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Build and package
-        run: ./.github/scripts/build.sh
         env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          VERSION: ${GITHUB_REF#refs/tags/}
+            NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+            VERSION: ${{ github.ref_name }}
+        run: |
+          VERSION="${VERSION#v}"
+          sed -i 's/const VERSION = ""/const VERSION = "'$VERSION'"/' config/const.go
+          
+          mkdir -p npm-publish/dist
 
-      - name: Upload release artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: dist/*.tar.gz
+          echo "Building dockitai-cli for multiple platforms..."
+          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o "npm-publish/dist/dockitai-cli-darwin-x64" .
+          GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o "npm-publish/dist/dockitai-cli-darwin-arm64" .
+          GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o "npm-publish/dist/dockitai-cli-linux-arm64" .
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o "npm-publish/dist/dockitai-cli-linux-x64" .
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o "npm-publish/dist/dockitai-cli-win32-x64.exe" .
+          GOOS=windows GOARCH=arm64 go build -ldflags="-s -w" -o "npm-publish/dist/dockitai-cli-win32-arm64.exe" .
 
-      - name: Upload NPM package artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: npm-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: npm-packages/
-  
-  create-release:
-    needs: build-and-release
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v4
+          cd npm-publish
 
-      - name: Download artifacts and create release
-        run: ./.github/scripts/create-release.sh
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${GITHUB_REF#refs/tags/}
-  
-  publish-npm:
-    needs: build-and-release
-    runs-on: ubuntu-latest
-    
-    strategy:
-      matrix:
-        include:
-          - goos: linux
-            goarch: amd64
-          - goos: linux
-            goarch: arm64
-          - goos: darwin
-            goarch: amd64
-          - goos: darwin
-            goarch: arm64
-          - goos: windows
-            goarch: amd64
-          - goos: windows
-            goarch: arm64
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
+          sed -i "s/\$VERSION/${VERSION//\//\\/}/g" package.json
 
-      - name: Download and publish NPM package
-        run: ./.github/scripts/publish-npm-platform.sh
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
+          touch dockitai-cli dockitai-cli.exe
 
-  publish-npm-main:
-    needs: publish-npm
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Publish main NPM package
-        run: ./.github/scripts/publish-npm-main.sh
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          VERSION: ${GITHUB_REF#refs/tags/}
+          npm publish --access public

@@ -5,6 +5,8 @@ import (
 	"os"
 )
 
+const VERSION = ""
+
 var (
 	ThemesRepositoryURL = "https://github.com/YHVCorp/themes.git"
 	DefaultDockitAIPath = fmt.Sprintf("%s/.dockitai", os.Getenv("HOME"))
