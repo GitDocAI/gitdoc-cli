@@ -1,4 +1,5 @@
 project_name: dockitai-cli
+
 release:
   github:
     owner:  ${{ .Env.GITHUB_REPOSITORY_OWNER }}
@@ -19,7 +20,42 @@ archives:
       - goos: windows
         format: zip
 
-npm:
-  package_name: dockitai-cli
-  publish: true
-  bin_name: dockitai-cli
+publishers:
+  - name: npm
+    ids:
+      - default
+    cmd: |
+      mkdir -p npm-package/bin
+      
+      cp {{ .ArtifactPath }} npm-package/bin/dockitai-cli
+      chmod +x npm-package/bin/dockitai-cli
+      
+      cat > npm-package/package.json << 'EOF'
+      {
+        "name": "dockitai-cli",
+        "version": "{{ .Version }}",
+        "description": "DockitAI CLI tool",
+        "bin": {
+          "dockitai-cli": "./bin/dockitai-cli"
+        },
+        "files": [
+          "bin/"
+        ],
+        "os": [
+          "{{ .Os }}"
+        ],
+        "cpu": [
+          "{{ .Arch }}"
+        ],
+        "repository": {
+          "type": "git",
+          "url": "https://github.com/{{ .Env.GITHUB_REPOSITORY_OWNER }}/{{ .Env.GITHUB_REPOSITORY }}.git"
+        },
+        "license": "Apache-2.0",
+      }
+      EOF
+      
+      cd npm-package
+      npm publish --access public
+    env:
+      - NPM_TOKEN={{ .Env.NPM_TOKEN }}
