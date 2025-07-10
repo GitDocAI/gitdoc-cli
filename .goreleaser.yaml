@@ -1,0 +1,25 @@
+project_name: dockitai-cli
+release:
+  github:
+    owner:  ${{ .Env.GITHUB_REPOSITORY_OWNER }}
+    name:   ${{ .Env.GITHUB_REPOSITORY }}
+
+builds:
+  - id: default
+    main: .
+    goos:   [linux, windows, darwin]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+
+archives:
+  - id: default
+    format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
+
+npm:
+  package_name: dockitai-cli
+  publish: true
+  bin_name: dockitai-cli
