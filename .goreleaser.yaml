@@ -22,11 +22,8 @@ archives:
 
 publishers:
   - name: npm
-    ids:
-      - default
+    ids: [default]
     cmd: |
-      set -e
-      
       PACKAGE_DIR="npm-package-{{ .Os }}-{{ .Arch }}"
       rm -rf "$PACKAGE_DIR"
       mkdir -p "$PACKAGE_DIR/bin"
@@ -39,25 +36,19 @@ publishers:
         BINARY_NAME="dockitai-cli"
       fi
       
-      chmod +x "$PACKAGE_DIR/bin/$BINARY_NAME"
+      chmod +x "$PACKAGE_DIR/bin/"*
       
-      cat > "$PACKAGE_DIR/package.json" << EOF
+      cat > "$PACKAGE_DIR/package.json" << 'EOF'
       {
         "name": "dockitai-cli-{{ .Os }}-{{ .Arch }}",
         "version": "{{ .Version }}",
         "description": "DockitAI CLI tool for {{ .Os }} {{ .Arch }}",
         "bin": {
-          "dockitai-cli": "./bin/$BINARY_NAME"
+          "dockitai-cli": "./bin/{{ if eq .Os \"windows\" }}dockitai-cli.exe{{ else }}dockitai-cli{{ end }}"
         },
-        "files": [
-          "bin/"
-        ],
-        "os": [
-          "{{ .Os }}"
-        ],
-        "cpu": [
-          "{{ .Arch }}"
-        ],
+        "files": ["bin/"],
+        "os": ["{{ .Os }}"],
+        "cpu": ["{{ .Arch }}"],
         "repository": {
           "type": "git",
           "url": "https://github.com/{{ .Env.GITHUB_REPOSITORY_OWNER }}/{{ .Env.GITHUB_REPOSITORY }}.git"
@@ -67,7 +58,7 @@ publishers:
       EOF
       
       cd "$PACKAGE_DIR"
-      echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
+      echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
       npm publish --access public
     env:
       - NPM_TOKEN={{ .Env.NPM_TOKEN }}
