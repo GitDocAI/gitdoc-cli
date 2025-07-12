@@ -14,3 +14,11 @@ var (
 	ConfigFileName      = "dockitai.config.json"
 	ClearExceptionDirs  = []string{"startswith:.", "equals:node_modules"}
 )
+
+func GetThemesPath() string {
+	pathEnv := os.Getenv("DOCKITAI_THEMES_PATH")
+	if pathEnv != "" {
+		return pathEnv
+	}
+	return DefaultThemesPath
+}

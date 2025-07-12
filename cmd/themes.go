@@ -11,21 +11,21 @@ import (
 )
 
 func DownloadThemes(forceUpdate bool) error {
-	exists, err := utils.CreatePathIfNotExist(config.DefaultThemesPath)
+	exists, err := utils.CreatePathIfNotExist(config.GetThemesPath())
 	if err != nil {
 		return fmt.Errorf("error creating default themes path: %v", err)
 	}
 
 	if !exists {
 		fmt.Println("Downloading Themes...")
-		cloneCmd := exec.Command("git", "clone", config.ThemesRepositoryURL, config.DefaultThemesPath)
+		cloneCmd := exec.Command("git", "clone", config.ThemesRepositoryURL, config.GetThemesPath())
 		if err := cloneCmd.Run(); err != nil {
 			return fmt.Errorf("error downloading theme: %s", err.Error())
 		}
 		fmt.Println("Themes downloaded successfully.")
 	} else if forceUpdate {
 		fmt.Println("Updating Themes...")
-		updateCmd := exec.Command("git", "-C", config.DefaultThemesPath, "pull")
+		updateCmd := exec.Command("git", "-C", config.GetThemesPath(), "pull")
 		if err := updateCmd.Run(); err != nil {
 			return fmt.Errorf("error updating themes: %s", err.Error())
 		}
@@ -36,7 +36,7 @@ func DownloadThemes(forceUpdate bool) error {
 }
 
 func CopyTheme(targetDir string, themeName string) error {
-	sourceDir := filepath.Join(config.DefaultThemesPath, themeName)
+	sourceDir := filepath.Join(config.GetThemesPath(), themeName)
 
 	if !utils.CheckIfPathExist(sourceDir) {
 		return fmt.Errorf("theme '%s' does not exist", themeName)
