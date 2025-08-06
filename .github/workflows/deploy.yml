@@ -1,4 +1,4 @@
-name: Release DockitAI CLI
+name: Release GitDocAI CLI
 
 on:
   push:
@@ -31,18 +31,18 @@ jobs:
           
           mkdir -p npm-publish/dist
 
-          echo "Building dockitai-cli for multiple platforms..."
-          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o "npm-publish/dist/dockitai-cli-darwin-x64" .
-          GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o "npm-publish/dist/dockitai-cli-darwin-arm64" .
-          GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o "npm-publish/dist/dockitai-cli-linux-arm64" .
-          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o "npm-publish/dist/dockitai-cli-linux-x64" .
-          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o "npm-publish/dist/dockitai-cli-win32-x64.exe" .
-          GOOS=windows GOARCH=arm64 go build -ldflags="-s -w" -o "npm-publish/dist/dockitai-cli-win32-arm64.exe" .
+          echo "Building gitdocai-cli for multiple platforms..."
+          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o "npm-publish/dist/gitdocai-cli-darwin-x64" .
+          GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o "npm-publish/dist/gitdocai-cli-darwin-arm64" .
+          GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o "npm-publish/dist/gitdocai-cli-linux-arm64" .
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o "npm-publish/dist/gitdocai-cli-linux-x64" .
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o "npm-publish/dist/gitdocai-cli-win32-x64.exe" .
+          GOOS=windows GOARCH=arm64 go build -ldflags="-s -w" -o "npm-publish/dist/gitdocai-cli-win32-arm64.exe" .
 
           cd npm-publish
 
           sed -i "s/\$VERSION/${VERSION//\//\\/}/g" package.json
 
-          touch dockitai-cli dockitai-cli.exe
+          touch gitdocai-cli gitdocai-cli.exe
 
           npm publish --access public

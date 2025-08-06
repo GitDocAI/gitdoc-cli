@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/YHVCorp/DockitAICLI/schemas"
-	"github.com/YHVCorp/DockitAICLI/utils"
+	"github.com/YHVCorp/gitdocai-cli/schemas"
+	"github.com/YHVCorp/gitdocai-cli/utils"
 )
 
 type Config struct {
@@ -25,7 +25,7 @@ func LoadConfig(inputPath, outputPath string) error {
 	}
 
 	if outputPath == "" {
-		configInstance.OutputPath = fmt.Sprintf("%s/.dockitai/generated", os.Getenv("HOME"))
+		configInstance.OutputPath = fmt.Sprintf("%s/.gitdocai/generated", os.Getenv("HOME"))
 	}
 
 	if inputPath == "" {
@@ -38,7 +38,7 @@ func LoadConfig(inputPath, outputPath string) error {
 
 	configInstance.SiteConfig = schemas.SiteConfig{}
 	if err := utils.ReadJson(filepath.Join(configInstance.InputPath, ConfigFileName), &configInstance.SiteConfig); err != nil {
-		return fmt.Errorf("error reading dockitai config: %v", err)
+		return fmt.Errorf("error reading gitdocai config: %v", err)
 	}
 
 	if err := ValidateSiteConfig(&configInstance.SiteConfig); err != nil {

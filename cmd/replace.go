@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/YHVCorp/DockitAICLI/config"
-	"github.com/YHVCorp/DockitAICLI/utils"
+	"github.com/YHVCorp/gitdocai-cli/config"
+	"github.com/YHVCorp/gitdocai-cli/utils"
 )
 
 func ReplaceComponents(cnf config.Config) error {

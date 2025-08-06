@@ -1,4 +1,4 @@
-module github.com/YHVCorp/DockitAICLI
+module github.com/YHVCorp/gitdocai-cli
 
 go 1.23.5
 

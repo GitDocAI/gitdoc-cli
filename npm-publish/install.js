@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const BINARY_NAME = 'dockitai-cli';
+const BINARY_NAME = 'gitdocai-cli';
 
 function getPlatform() {
   const type = process.platform;

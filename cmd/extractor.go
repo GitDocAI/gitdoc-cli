@@ -3,7 +3,7 @@ package cmd
 import (
 	"strings"
 
-	"github.com/YHVCorp/DockitAICLI/schemas"
+	"github.com/YHVCorp/gitdocai-cli/schemas"
 )
 
 func ExtractUsedPaths(config schemas.SiteConfig) ([]string, []string) {

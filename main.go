@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/YHVCorp/DockitAICLI/cmd"
-	"github.com/YHVCorp/DockitAICLI/config"
-	"github.com/YHVCorp/DockitAICLI/utils"
+	"github.com/YHVCorp/gitdocai-cli/cmd"
+	"github.com/YHVCorp/gitdocai-cli/config"
+	"github.com/YHVCorp/gitdocai-cli/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -18,16 +18,16 @@ func main() {
 	// ################### Root Command ###################
 	// Create the root command
 	rootCmd := &cobra.Command{
-		Use:   "dockitai",
-		Short: "DockitAI CLI to serve and manage documentation projects",
-		Long: `DockitAI is a CLI tool for working with documentation sites.
+		Use:   "gitdocai",
+		Short: "GitDocAI CLI to serve and manage documentation projects",
+		Long: `GitDocAI is a CLI tool for working with documentation sites.
 
 Available commands:
 
 - serve: Starts a local server to preview the documentation site
 - init-sample: Initializes a sample project structure
 - update-themes: Downloads or updates the default themes
-- version: Displays the current version of DockitAI CLI`,
+- version: Displays the current version of GitDocAI CLI`,
 		PersistentPreRunE: func(command *cobra.Command, args []string) error {
 			return cmd.ValidateSystemRequirements()
 		},
@@ -42,14 +42,14 @@ Available commands:
 			return cmd.Serve(serveInput)
 		},
 	}
-	serveCmd.Flags().StringVar(&serveInput, "input", utils.GetMyPath(), "Path to the source folder containing MDX and dockitai.config.json")
+	serveCmd.Flags().StringVar(&serveInput, "input", utils.GetMyPath(), "Path to the source folder containing MDX and gitdocai.config.json")
 	rootCmd.AddCommand(serveCmd)
 
 	// ################### Deploy Command ###################
 	// Create the deploy command
 	deployCmd := &cobra.Command{
 		Use:    "deploy",
-		Short:  "[Internal] Deploy a DockitAI project",
+		Short:  "[Internal] Deploy a GitDocAI project",
 		Hidden: true,
 		RunE: func(command *cobra.Command, args []string) error {
 			return cmd.Deploy(deployInput, deployOutput)
@@ -64,7 +64,7 @@ Available commands:
 	// Add the init-sample command to the root command
 	initCmd := &cobra.Command{
 		Use:   "init-sample",
-		Short: "Initialize a sample DockitAI project",
+		Short: "Initialize a sample GitDocAI project",
 		RunE: func(command *cobra.Command, args []string) error {
 			return cmd.InitSample()
 		},
@@ -86,9 +86,9 @@ Available commands:
 	// Add the version command to the root command
 	versionCmd := &cobra.Command{
 		Use:   "version",
-		Short: "Display the current version of DockitAI CLI",
+		Short: "Display the current version of GitDocAI CLI",
 		Run: func(command *cobra.Command, args []string) {
-			fmt.Printf("DockitAI CLI version: %s\n", config.VERSION)
+			fmt.Printf("GitDocAI CLI version: %s\n", config.VERSION)
 		},
 	}
 	rootCmd.AddCommand(versionCmd)

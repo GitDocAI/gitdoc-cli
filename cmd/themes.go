@@ -6,8 +6,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/YHVCorp/DockitAICLI/config"
-	"github.com/YHVCorp/DockitAICLI/utils"
+	"github.com/YHVCorp/gitdocai-cli/config"
+	"github.com/YHVCorp/gitdocai-cli/utils"
 )
 
 func DownloadThemes(forceUpdate bool) error {
