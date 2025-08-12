@@ -79,7 +79,7 @@ func ValidateSiteConfig(cfg *schemas.SiteConfig) error {
 	}
 
 	validFooterTypes := map[string]bool{
-		"x": true, "github": true, "linkedin": true, "facebook": true, "youtube": true,
+		"x": true, "github": true, "linkedin": true, "facebook": true, "youtube": true, "instagram": true,
 	}
 	for i, link := range cfg.Footer {
 		if link.Type == "" || link.Reference == "" {

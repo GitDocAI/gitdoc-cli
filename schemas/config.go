@@ -53,7 +53,7 @@ type NavbarComponent struct {
 }
 
 type SocialLink struct {
-	Type      string `json:"type"`      // e.g., "github", "linkedin", "x", "facebook", "youtube", "link"
+	Type      string `json:"type"`      // e.g., "github", "linkedin", "x", "facebook", "youtube", "link", "instagram"
 	Reference string `json:"reference"` // Link to the social media profile
 }
 
