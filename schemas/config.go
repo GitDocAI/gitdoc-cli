@@ -78,5 +78,6 @@ type Item struct {
 	Type     string `json:"type"`               // Type of the item, e.g., "group", "dropdown", "page"
 	Title    string `json:"title"`              // Title of the item, e.g., "Documentation", "API"
 	Page     string `json:"page"`               // Path to the page or resource, e.g., "docs/introduction.md". Only used if Type is "page"
+	ApiRefType *string `json:"api_ref_type,omitempty"` //Optional for api ref pages
 	Children []Item `json:"children,omitempty"` // Optional list of child items for nested navigation. Only used if Type is "group" or "dropdown"
 }

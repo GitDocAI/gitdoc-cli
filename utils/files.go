@@ -3,7 +3,6 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -115,7 +114,34 @@ func CopyFile(src, dst string, mode os.FileMode) error {
 	}
 	defer destFile.Close()
 
-	_, err = io.Copy(destFile, sourceFile)
+	// Check if the file is an MDX file
+	if filepath.Ext(src) == ".mdx" {
+			// Check for OpenAPI file in parent or grandparent directory
+			openAPIDir := filepath.Dir(filepath.Dir(src))
+			openAPIFile, err := FindOpenAPIJSONInDir(openAPIDir)
+			if err != nil || openAPIFile == "" {
+				return nil // Skip processing if no OpenAPI file is found
+			}
+
+			// Extract OpenAPI data
+			openAPIDataMap := FindOpenAPIAsDictInCurrentDir(openAPIFile)
+			// Extract frontMatter from MDX
+			content, err := os.ReadFile(src)
+			if err != nil {
+				return fmt.Errorf("error reading file '%s': %v", src, err)
+			}
+			frontMatter, ok := ExtractFrontMatter(string(content))
+			if !ok {
+				return nil // Skip processing if no frontMatter is found
+			}
+
+			// Inject ApiReference component if both OpenAPI and frontMatter info are present
+			apiReference := InjectApiReference(openAPIDataMap,frontMatter)
+			contentWithApiReference := string(content) + "\n"+ apiReference
+			// Write updated content to destination file
+			return os.WriteFile(dst, []byte(contentWithApiReference), mode)
+	}
+
 	return err
 }
 
@@ -150,4 +176,37 @@ func CopyDir(src string, dst string) error {
 	}
 
 	return nil
+}
+
+// processMDXFile processes an MDX file by adding a React component if conditions are met
+func processMDXFile(src, dst string, mode os.FileMode) error {
+	// Check for OpenAPI file in parent or grandparent directory
+	openAPIDir := filepath.Dir(filepath.Dir(src))
+	openAPIFile, err := FindOpenAPIJSONInDir(openAPIDir)
+	if err != nil || openAPIFile == "" {
+		return nil // Skip processing if no OpenAPI file is found
+	}
+
+	// Extract OpenAPI data
+	openAPIDataMap := FindOpenAPIAsDictInCurrentDir(openAPIFile)
+	if err != nil {
+		return fmt.Errorf("error converting OpenAPI data to OpenAPIInfo: %v", err)
+	}
+
+	// Extract frontMatter from MDX
+	content, err := os.ReadFile(src)
+	if err != nil {
+		return fmt.Errorf("error reading file '%s': %v", src, err)
+	}
+	frontMatter, ok := ExtractFrontMatter(string(content))
+	if !ok {
+		return nil // Skip processing if no frontMatter is found
+	}
+
+	// Inject ApiReference component if both OpenAPI and frontMatter info are present
+	apiReference := InjectApiReference(openAPIDataMap, frontMatter)
+	contentWithApiReference := strings.Replace(string(content), "---", apiReference, 1)
+
+	// Write updated content to destination file
+	return os.WriteFile(dst, []byte(contentWithApiReference), mode)
 }

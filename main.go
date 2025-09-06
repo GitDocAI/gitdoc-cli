@@ -95,8 +95,8 @@ Available commands:
 
 	// ################### Execute the Root Command ###################
 	// Execute the root command, which will parse the flags and run the appropriate command
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+		if err := rootCmd.Execute(); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 }
