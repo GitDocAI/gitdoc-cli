@@ -10,12 +10,11 @@ import (
 )
 
 func GetMyPath() string {
-	ex, err := os.Executable()
+	dir, err := os.Getwd()
 	if err != nil {
 		return ""
 	}
-	exPath := filepath.Dir(ex)
-	return exPath
+	return dir
 }
 
 func CreatePathIfNotExist(path string) (bool, error) {
