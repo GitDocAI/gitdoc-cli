@@ -63,6 +63,8 @@ func ReplaceComponents(cnf config.Config) error {
 			if err := utils.CopyFile(srcPath, destPath, info.Mode()); err != nil {
 				return fmt.Errorf("error copying file '%s': %v", destPath, err)
 			}
+
+			// Verify the file is an MDX file
 		}
 	}
 
