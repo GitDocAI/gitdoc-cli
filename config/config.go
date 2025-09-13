@@ -97,7 +97,7 @@ func ValidateSiteConfig(cfg *schemas.SiteConfig) error {
 	return nil
 }
 
-func validateNavigation(nav *schemas.Navegation) error {
+func validateNavigation(nav *schemas.Navigation) error {
 	if len(nav.Versions) > 0 {
 		if len(nav.Tabs) > 0 || len(nav.Items) > 0 {
 			return errors.New("if 'versions' is present, 'tabs' and 'items' must be empty")
@@ -175,6 +175,13 @@ func validateItem(item schemas.Item) error {
 			if err := validateItem(child); err != nil {
 				return err
 			}
+		}
+	case "openapi", "swagger":
+		if item.ApiReference.Method == "" || item.ApiReference.Reference == "" || item.ApiReference.Path == "" {
+			return fmt.Errorf("%s item '%s' must have 'method', 'reference', and 'path' in 'api_reference'", item.Type, item.Title)
+		}
+		if len(item.Children) > 0 {
+			return fmt.Errorf("%s item '%s' cannot have children", item.Type, item.Title)
 		}
 	default:
 		return fmt.Errorf("item '%s' has unknown type '%s'", item.Title, item.Type)

@@ -10,8 +10,9 @@ type SiteConfig struct {
 	Favicon          string            `json:"favicon"` // Path to the favicon image
 	Background       Background        `json:"background"`
 	Banner           Banner            `json:"banner"`
+	APIServer        *string           `json:"apiServer,omitempty"`
 	Navbar           []NavbarComponent `json:"navbar"`
-	Navigation       *Navegation       `json:"navigation"`
+	Navigation       *Navigation       `json:"navigation"`
 	Footer           []SocialLink      `json:"footer"`
 }
 
@@ -57,7 +58,7 @@ type SocialLink struct {
 	Reference string `json:"reference"` // Link to the social media profile
 }
 
-type Navegation struct {
+type Navigation struct {
 	Versions []Version `json:"versions,omitempty"` // List of versions for the navigation. Optional
 	Tabs     []Tab     `json:"tabs,omitempty"`     // List of tabs for the navigation. Optional if there are no versions
 	Items    []Item    `json:"items,omitempty"`    // List of items in the navigation. Optional if there are no versions or tabs
@@ -75,9 +76,15 @@ type Tab struct {
 }
 
 type Item struct {
-	Type     string `json:"type"`               // Type of the item, e.g., "group", "dropdown", "page"
+	ApiReference
+	Type     string `json:"type"`               // Type of the item, e.g., "group", "dropdown", "page", "openapi", "swagger"
 	Title    string `json:"title"`              // Title of the item, e.g., "Documentation", "API"
 	Page     string `json:"page"`               // Path to the page or resource, e.g., "docs/introduction.md". Only used if Type is "page"
-	ApiRefType *string `json:"api_ref_type,omitempty"` //Optional for api ref pages
 	Children []Item `json:"children,omitempty"` // Optional list of child items for nested navigation. Only used if Type is "group" or "dropdown"
+}
+
+type ApiReference struct {
+	Method    string `json:"method"`    // HTTP method, e.g., "GET", "POST"
+	Reference string `json:"reference"` // API endpoint or URL
+	Path      string `json:"path"`      // Path to the API documentation or resource
 }
