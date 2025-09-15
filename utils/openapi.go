@@ -11,6 +11,22 @@ import (
 
 var openapiCache sync.Map
 
+// Helper to safely get a string from a map
+func getString(m map[string]interface{}, key string) string {
+    if val, ok := m[key].(string); ok {
+        return val
+    }
+    return ""
+}
+
+// Helper to safely get a map from a map
+func getMap(m map[string]interface{}, key string) map[string]interface{} {
+    if val, ok := m[key].(map[string]interface{}); ok {
+        return val
+    }
+    return nil
+}
+
 
 func cacheSet(key string, value map[string]interface{}) {
     openapiCache.Store(key, value)
@@ -31,18 +47,18 @@ func ExtractRequestInfoFromOpenapi(path, method, request string, tryitbaseurl *s
     }
 
     // paths
-    paths, ok := openapiDic["paths"].(map[string]interface{})
-    if !ok {
+    paths := getMap(openapiDic, "paths")
+    if paths == nil {
         return nil, fmt.Errorf("no paths found in OpenAPI")
     }
 
-    pathItem, ok := paths[request].(map[string]interface{})
-    if !ok {
+    pathItem := getMap(paths, request)
+    if pathItem == nil {
         return nil, fmt.Errorf("path %s not found", request)
     }
 
-    operation, ok := pathItem[strings.ToLower(method)].(map[string]interface{})
-    if !ok {
+    operation := getMap(pathItem, strings.ToLower(method))
+    if operation == nil {
         return nil, fmt.Errorf("method %s not found for path %s", method, request)
     }
 
@@ -52,17 +68,21 @@ func ExtractRequestInfoFromOpenapi(path, method, request string, tryitbaseurl *s
         for _, p := range rawParams {
             if pmap, ok := p.(map[string]interface{}); ok {
                 var ps schemas.ParameterSchema
-                if schema, ok := pmap["schema"].(map[string]interface{}); ok {
-                    ps.Type, _ = schema["type"].(string)
-                    if f, ok := schema["format"].(string); ok {
+                if schema := getMap(pmap, "schema"); schema != nil {
+                    ps.Type = getString(schema, "type")
+                    if f := getString(schema, "format"); f != "" {
                         ps.Format = &f
                     }
                 }
 
+                name := getString(pmap, "name")
+                in := getString(pmap, "in")
+                description := getString(pmap, "description")
+
                 params = append(params, schemas.Parameter{
-                    Name:        pmap["name"].(string),
-                    In:          pmap["in"].(string),
-                    Description: pmap["description"].(string),
+                    Name:        name,
+                    In:          in,
+                    Description: description,
                     Schema:      ps,
                 })
             }
@@ -74,7 +94,7 @@ func ExtractRequestInfoFromOpenapi(path, method, request string, tryitbaseurl *s
     if rawRes, ok := operation["responses"].(map[string]interface{}); ok {
         for code, r := range rawRes {
             if rmap, ok := r.(map[string]interface{}); ok {
-                desc, _ := rmap["description"].(string)
+                desc := getString(rmap, "description")
                 var content any
                 if c, ok := rmap["content"]; ok {
                     content = c
@@ -101,8 +121,8 @@ func ExtractRequestInfoFromOpenapi(path, method, request string, tryitbaseurl *s
     var tryIt *string = tryitbaseurl
 	if tryIt ==nil{
 		if servers, ok := openapiDic["servers"].([]interface{}); ok && len(servers) > 0 {
-			if first, ok := servers[0].(map[string]interface{}); ok {
-				if url, ok := first["url"].(string); ok {
+			if first := getMap(servers[0].(map[string]interface{}), ""); first != nil {
+				if url := getString(first, "url"); url != "" {
 					tryIt = &url
 				}
 			}
