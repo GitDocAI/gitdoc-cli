@@ -24,7 +24,7 @@ func cacheGet(key string) (map[string]interface{}, bool) {
     return val.(map[string]interface{}), true
 }
 
-func ExtractRequestInfoFromOpenapi(path, method, request string, tryitbaseurl *string) (*schemas.ApiReference, error) {
+func ExtractRequestInfoFromOpenapi(path, method, request string, tryitbaseurl *string) (*schemas.OpenapiData, error) {
     openapiDic, err := ExtractOpenapiConfig(path)
     if err != nil {
         return nil, err
@@ -109,7 +109,7 @@ func ExtractRequestInfoFromOpenapi(path, method, request string, tryitbaseurl *s
 		}
 	}
 
-    return &schemas.ApiReference{
+    return &schemas.OpenapiData{
         Title:        title,
         Method:       strings.ToUpper(method),
         Path:         request,

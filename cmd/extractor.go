@@ -2,13 +2,13 @@ package cmd
 
 import (
 	"strings"
+	"fmt"
 	"github.com/YHVCorp/gitdocai-cli/schemas"
 )
 
-func ExtractUsedPaths(config schemas.SiteConfig) ([]string, []string, map[string]schemas.Item) {
+func ExtractUsedPaths(config schemas.SiteConfig) ([]string, []string) {
 	publicSet := make(map[string]struct{})
 	contentSet := make(map[string]struct{})
-	apirefSet := make(map[string]schemas.Item)
 
 	extractAndAddPath := func(path string, target map[string]struct{}) {
 		if path == "" || strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
@@ -33,14 +33,11 @@ func ExtractUsedPaths(config schemas.SiteConfig) ([]string, []string, map[string
 
 	var extractPagesFromItems func([]schemas.Item)
 
+
 	extractPagesFromItems = func(items []schemas.Item) {
 		for i := range items {
 			if items[i].Type == "page" && items[i].Page != "" {
-				if items[i].ApiRefPath !=nil {
-					apirefSet[items[i].Page]=items[i]
-				}else{
 					extractAndAddPath(items[i].Page, contentSet)
-				}
 			}
 			if len(items[i].Children) > 0 {
 				extractPagesFromItems(items[i].Children)
@@ -71,7 +68,53 @@ func ExtractUsedPaths(config schemas.SiteConfig) ([]string, []string, map[string
 	}
 
 
-	return publicList, contentList,apirefSet
+	return publicList, contentList
+}
+
+func cleanPath(str string) string{
+	return strings.ReplaceAll(strings.ToLower(str)," ","_")
+}
+
+func ExtractApirefPaths(config schemas.SiteConfig) map[string]schemas.Item{
+	apirefSet := make(map[string]schemas.Item)
+
+	extractAndAddPath := func(path string, item schemas.Item) {
+		new_path := path + fmt.Sprintf("/%s.mdx",cleanPath(item.Title))
+		apirefSet[new_path]=item
+	}
+
+	var extractApirefsFromItems func(string,[]schemas.Item)
+	extractApirefsFromItems = func(path string,items []schemas.Item) {
+		for i := range items {
+			if items[i].Type =="openapi" || items[i].Type =="swagger" {
+				extractAndAddPath(path,items[i])
+			}
+			if len(items[i].Children) > 0 {
+				next_path := path + fmt.Sprintf("/%s",cleanPath(items[i].Title))
+				extractApirefsFromItems(next_path,items[i].Children)
+			}
+		}
+	}
+
+
+	if config.Navigation != nil {
+		for _, version := range config.Navigation.Versions {
+			versionName := cleanPath(version.Version)
+			for _, tab := range version.Tabs {
+				tab_path := versionName + fmt.Sprintf("/%s",cleanPath(tab.Tab))
+				extractApirefsFromItems(tab_path,tab.Items)
+			}
+				extractApirefsFromItems(versionName,version.Items)
+		}
+		for _, tab := range config.Navigation.Tabs {
+				tab_path := fmt.Sprintf("/%s",cleanPath(tab.Tab))
+				extractApirefsFromItems(tab_path,tab.Items)
+		}
+		extractApirefsFromItems("",config.Navigation.Items)
+	}
+
+
+	return apirefSet
 }
 
 

@@ -3,17 +3,19 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
 func GetMyPath() string {
-	dir, err := os.Getwd()
+	ex, err := os.Executable()
 	if err != nil {
 		return ""
 	}
-	return dir
+	exPath := filepath.Dir(ex)
+	return exPath
 }
 
 func CreatePathIfNotExist(path string) (bool, error) {
@@ -101,7 +103,6 @@ func matchesAnyFilter(name string, filters []string) bool {
 }
 
 func CopyFile(src, dst string, mode os.FileMode) error {
-
 	sourceFile, err := os.Open(src)
 	if err != nil {
 		return err
@@ -110,10 +111,11 @@ func CopyFile(src, dst string, mode os.FileMode) error {
 
 	destFile, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
 	if err != nil {
-		fmt.Print("copiando....")
 		return err
 	}
 	defer destFile.Close()
+
+	_, err = io.Copy(destFile, sourceFile)
 	return err
 }
 
@@ -149,4 +151,3 @@ func CopyDir(src string, dst string) error {
 
 	return nil
 }
-

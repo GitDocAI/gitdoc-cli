@@ -1,7 +1,7 @@
 package schemas
 
 
-type ApiReference struct{
+type OpenapiData struct{
   Title      string   `json:"title"`
   Method     string   `json:"method"` //"GET" | "POST" | "PUT" | "DELETE";
   Path       string   `json:"path"`
