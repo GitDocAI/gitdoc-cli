@@ -34,8 +34,8 @@ func CreateFileWithApiReference(apiRef schemas.OpenapiData, path string) error {
 			  title="%s"
 			  method="%s"
 			  path="%s"
-			  parameters='%s'
-			  responses='%s'
+			  parameters={%s}
+			  responses={%s}
 			  tryItBaseUrl="%s"
 			/>`,
 			apiRef.Title,
