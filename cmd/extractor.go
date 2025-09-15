@@ -2,13 +2,13 @@ package cmd
 
 import (
 	"strings"
-
 	"github.com/YHVCorp/gitdocai-cli/schemas"
 )
 
-func ExtractUsedPaths(config schemas.SiteConfig) ([]string, []string) {
+func ExtractUsedPaths(config schemas.SiteConfig) ([]string, []string, map[string]schemas.Item) {
 	publicSet := make(map[string]struct{})
 	contentSet := make(map[string]struct{})
+	apirefSet := make(map[string]schemas.Item)
 
 	extractAndAddPath := func(path string, target map[string]struct{}) {
 		if path == "" || strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
@@ -22,7 +22,6 @@ func ExtractUsedPaths(config schemas.SiteConfig) ([]string, []string) {
 		if len(parts) == 0 || parts[0] == "" {
 			return
 		}
-
 		target[parts[0]] = struct{}{}
 	}
 
@@ -37,14 +36,17 @@ func ExtractUsedPaths(config schemas.SiteConfig) ([]string, []string) {
 	extractPagesFromItems = func(items []schemas.Item) {
 		for i := range items {
 			if items[i].Type == "page" && items[i].Page != "" {
-				extractAndAddPath(items[i].Page, contentSet)
+				if items[i].ApiRefPath !=nil {
+					apirefSet[items[i].Page]=items[i]
+				}else{
+					extractAndAddPath(items[i].Page, contentSet)
+				}
 			}
 			if len(items[i].Children) > 0 {
 				extractPagesFromItems(items[i].Children)
 			}
 		}
 	}
-
 	if config.Navigation != nil {
 		for _, version := range config.Navigation.Versions {
 			for _, tab := range version.Tabs {
@@ -68,5 +70,8 @@ func ExtractUsedPaths(config schemas.SiteConfig) ([]string, []string) {
 		contentList = append(contentList, path)
 	}
 
-	return publicList, contentList
+
+	return publicList, contentList,apirefSet
 }
+
+

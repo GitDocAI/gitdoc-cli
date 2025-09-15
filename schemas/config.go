@@ -14,6 +14,7 @@ type SiteConfig struct {
 	Navbar           []NavbarComponent `json:"navbar"`
 	Navigation       *Navigation       `json:"navigation"`
 	Footer           []SocialLink      `json:"footer"`
+	TryButtonBaseUrl     *string           `json:"try_button_base_url"`
 }
 
 type Background struct {
@@ -80,6 +81,9 @@ type Item struct {
 	Type     string `json:"type"`               // Type of the item, e.g., "group", "dropdown", "page", "openapi", "swagger"
 	Title    string `json:"title"`              // Title of the item, e.g., "Documentation", "API"
 	Page     string `json:"page"`               // Path to the page or resource, e.g., "docs/introduction.md". Only used if Type is "page"
+	ApiRefMethod *string `json:"method,omitempty"` //Optional for api ref pages
+	ApiRefPath *string `json:"api_ref_path,omitempty"` //Optional path of the openapi file
+	ApiRefRequest *string `json:"request,omitempty"`
 	Children []Item `json:"children,omitempty"` // Optional list of child items for nested navigation. Only used if Type is "group" or "dropdown"
 }
 

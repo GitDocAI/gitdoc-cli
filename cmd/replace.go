@@ -18,7 +18,7 @@ func ReplaceComponents(cnf config.Config) error {
 		return fmt.Errorf("error copying file '%s': %v", configFile, err)
 	}
 
-	publicPaths, contentPaths := ExtractUsedPaths(cnf.SiteConfig)
+	publicPaths, contentPaths,apirefMap := ExtractUsedPaths(cnf.SiteConfig)
 
 	for _, path := range publicPaths {
 		srcPath := filepath.Join(cnf.InputPath, path)
@@ -61,12 +61,32 @@ func ReplaceComponents(cnf config.Config) error {
 			}
 		} else {
 			if err := utils.CopyFile(srcPath, destPath, info.Mode()); err != nil {
-				return fmt.Errorf("error copying file '%s': %v", destPath, err)
+				return fmt.Errorf("error copying file '%s': %v", srcPath, err)
 			}
+		}
+	}
 
-			// Verify the file is an MDX file
+	for path,item := range apirefMap{
+		if item.ApiRefMethod==nil || item.ApiRefRequest==nil {
+			fmt.Printf("Warning: Route not configured for '%s' skipping.\n", item.Title)
+			continue //ignore file if theres not route configured
+		}
+
+		openapi_path := filepath.Join(cnf.InputPath, *item.ApiRefPath)
+		apiref,err := utils.ExtractRequestInfoFromOpenapi(openapi_path,*item.ApiRefMethod,*item.ApiRefRequest,cnf.SiteConfig.TryButtonBaseUrl)
+		if err!=nil{
+			fmt.Printf("Warning: Api Reference path '%s' does not exist, skipping.\n", *item.ApiRefPath)
+			continue //ignore file if theres not apiref
+		}
+		destPath := filepath.Join(cnf.OutputPath, "content", path)
+		err = utils.CreateFileWithApiReference(*apiref,destPath)
+		if err!=nil{
+			fmt.Printf("Warning: Api Reference path '%s' does not exist, skipping.\n", *item.ApiRefPath)
+			return fmt.Errorf("Error: error creating apireference file: '%s' : %v",destPath,err)
 		}
 	}
 
 	return nil
 }
+
+
