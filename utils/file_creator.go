@@ -149,14 +149,12 @@ title: %s
 description: %s
 ---
 
-# %s
 
 %s
 
 `,
 		escapeString(apiRef.Title),
 		escapeString(getStringValue(apiRef.Description)),
-		escapeString(apiRef.Title),
 		componentBuilder.String())
 
 	// Create and write to the file
