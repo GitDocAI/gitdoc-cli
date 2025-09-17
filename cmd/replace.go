@@ -80,6 +80,7 @@ func ReplaceComponents(cnf config.Config) error {
 			continue //ignore file if theres not apiref
 		}
 		destPath := filepath.Join(cnf.OutputPath, "content", path)
+		apiref.Title = item.Title
 		err = utils.CreateFileWithApiReference(*apiref,destPath)
 		if err!=nil{
 			fmt.Printf("Warning: Api Reference path '%s' does not exist, skipping.\n", item.Reference)
