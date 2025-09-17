@@ -10,6 +10,15 @@ import (
 	"github.com/YHVCorp/gitdocai-cli/utils"
 )
 
+func cleanAndCloneThemesRepo() error {
+	os.RemoveAll(config.GetThemesPath())
+	cloneCmd := exec.Command("git", "clone", config.ThemesRepositoryURL, config.GetThemesPath())
+	if err := cloneCmd.Run(); err != nil {
+		return fmt.Errorf("error cloning themes repository: %v", err)
+	}
+	return nil
+}
+
 func DownloadThemes(forceUpdate bool) error {
 	exists, err := utils.CreatePathIfNotExist(config.GetThemesPath())
 	if err != nil {
@@ -20,14 +29,18 @@ func DownloadThemes(forceUpdate bool) error {
 		fmt.Println("Downloading Themes...")
 		cloneCmd := exec.Command("git", "clone", config.ThemesRepositoryURL, config.GetThemesPath())
 		if err := cloneCmd.Run(); err != nil {
-			return fmt.Errorf("error downloading theme: %s", err.Error())
+			if err := cleanAndCloneThemesRepo(); err != nil {
+				return err
+			}
 		}
 		fmt.Println("Themes downloaded successfully.")
 	} else if forceUpdate {
 		fmt.Println("Updating Themes...")
 		updateCmd := exec.Command("git", "-C", config.GetThemesPath(), "pull")
 		if err := updateCmd.Run(); err != nil {
-			return fmt.Errorf("error updating themes: %s", err.Error())
+			if err := cleanAndCloneThemesRepo(); err != nil {
+				return err
+			}
 		}
 		fmt.Println("Themes downloaded successfully.")
 	}

@@ -83,7 +83,7 @@ func ReplaceComponents(cnf config.Config) error {
 		err = utils.CreateFileWithApiReference(*apiref, destPath)
 		if err != nil {
 			fmt.Printf("Warning: Api Reference path '%s' does not exist, skipping.\n", item.Reference)
-			return fmt.Errorf("Error: error creating apireference file: '%s' : %v", destPath, err)
+			return fmt.Errorf("error creating apireference file: '%s' : %v", destPath, err)
 		}
 	}
 
