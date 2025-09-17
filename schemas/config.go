@@ -10,11 +10,9 @@ type SiteConfig struct {
 	Favicon          string            `json:"favicon"` // Path to the favicon image
 	Background       Background        `json:"background"`
 	Banner           Banner            `json:"banner"`
-	APIServer        *string           `json:"apiServer,omitempty"`
 	Navbar           []NavbarComponent `json:"navbar"`
 	Navigation       *Navigation       `json:"navigation"`
 	Footer           []SocialLink      `json:"footer"`
-	TryButtonBaseUrl     *string           `json:"try_button_base_url"`
 }
 
 type Background struct {
@@ -78,7 +76,7 @@ type Tab struct {
 
 type Item struct {
 	ApiReference
-	Type     string `json:"type"`               // Type of the item, e.g., "group", "dropdown", "page", "openapi", "swagger"
+	Type     string `json:"type"`               // Type of the item, e.g., "group", "dropdown", "page", "openapi"
 	Title    string `json:"title"`              // Title of the item, e.g., "Documentation", "API"
 	Page     string `json:"page"`               // Path to the page or resource, e.g., "docs/introduction.md". Only used if Type is "page"
 	Children []Item `json:"children,omitempty"` // Optional list of child items for nested navigation. Only used if Type is "group" or "dropdown"

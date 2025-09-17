@@ -1,12 +1,13 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
-	"github.com/YHVCorp/gitdocai-cli/schemas"
-	"encoding/json"
 	"strings"
+
+	"github.com/YHVCorp/gitdocai-cli/schemas"
 )
 
 // CreateFileWithApiReference creates an MDX file (and its directories) at the given path
@@ -99,10 +100,6 @@ func CreateFileWithApiReference(apiRef schemas.OpenapiData, path string) error {
 		componentBuilder.WriteString(fmt.Sprintf("  summary=\"%s\"\n", escapeString(summary)))
 	}
 
-	if tryItBaseUrl := getStringValue(apiRef.TryItBaseUrl); tryItBaseUrl != "" {
-		componentBuilder.WriteString(fmt.Sprintf("  tryItBaseUrl=\"%s\"\n", escapeString(tryItBaseUrl)))
-	}
-
 	// Boolean fields
 	if getBoolValue(apiRef.Deprecated) {
 		componentBuilder.WriteString("  deprecated={true}\n")
@@ -129,7 +126,7 @@ func CreateFileWithApiReference(apiRef schemas.OpenapiData, path string) error {
 		componentBuilder.WriteString(fmt.Sprintf("  security={%s}\n", securityJSON))
 	}
 
-	if apiRef.SecuritySchemas !=nil{
+	if apiRef.SecuritySchemas != nil {
 		componentBuilder.WriteString(fmt.Sprintf("  securitySchemas={%s}\n", securitySchemasJson))
 	}
 
@@ -170,5 +167,3 @@ description: %s
 
 	return nil
 }
-
-

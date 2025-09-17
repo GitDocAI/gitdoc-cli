@@ -168,21 +168,21 @@ func validateItem(item schemas.Item) error {
 			return fmt.Errorf("page item '%s' cannot have children", item.Title)
 		}
 	case "group", "dropdown":
-		var predominant_type string =""
+		var predominant_type string = ""
 		for _, child := range item.Children {
-			if child.Type != "page" && child.Type != "openapi" && child.Type != "swagger" {
-				return fmt.Errorf("'%s' item '%s' can only contain children of type 'page', 'openapi' or 'swagger' found '%s'", item.Type, item.Title, child.Type)
+			if child.Type != "page" && child.Type != "openapi" {
+				return fmt.Errorf("'%s' item '%s' can only contain children of type 'page' or 'openapi' found '%s'", item.Type, item.Title, child.Type)
 			}
-			if predominant_type ==""{
+			if predominant_type == "" {
 				predominant_type = child.Type
-			}else if predominant_type != child.Type{
-				return fmt.Errorf("%s must have childrens of the same type, founded %s and %s on %s",item.Type, child.Type,predominant_type,item.Title)
+			} else if predominant_type != child.Type {
+				return fmt.Errorf("%s must have childrens of the same type, founded %s and %s on %s", item.Type, child.Type, predominant_type, item.Title)
 			}
 			if err := validateItem(child); err != nil {
 				return err
 			}
 		}
-	case "openapi", "swagger":
+	case "openapi":
 		if item.ApiReference.Method == "" || item.ApiReference.Reference == "" || item.ApiReference.Path == "" {
 			return fmt.Errorf("%s item '%s' must have 'method', 'reference', and 'path' in 'api_reference'", item.Type, item.Title)
 		}

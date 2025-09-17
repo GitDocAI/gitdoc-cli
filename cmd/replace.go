@@ -19,7 +19,7 @@ func ReplaceComponents(cnf config.Config) error {
 	}
 
 	publicPaths, contentPaths := ExtractUsedPaths(cnf.SiteConfig)
-	apirefMap:=ExtractApirefPaths(cnf.SiteConfig)
+	apirefMap := ExtractApirefPaths(cnf.SiteConfig)
 
 	for _, path := range publicPaths {
 		srcPath := filepath.Join(cnf.InputPath, path)
@@ -67,27 +67,25 @@ func ReplaceComponents(cnf config.Config) error {
 		}
 	}
 
-	for path,item := range apirefMap{
-		if item.Reference=="" || item.Method=="" {
+	for path, item := range apirefMap {
+		if item.Reference == "" || item.Method == "" {
 			fmt.Printf("Warning: Route not configured for '%s' skipping.\n", item.Title)
 			continue //ignore file if theres not route configured
 		}
 
 		openapi_path := filepath.Join(cnf.InputPath, item.Path)
-		apiref,err := utils.ExtractRequestInfoFromOpenapi(openapi_path,item.Method,item.Reference,cnf.SiteConfig.TryButtonBaseUrl)
-		if err!=nil{
+		apiref, err := utils.ExtractRequestInfoFromOpenapi(item.Title, openapi_path, item.Method, item.Reference)
+		if err != nil {
 			fmt.Printf("Warning: Api Reference path '%s' does not exist, skipping.\n", item.Path)
 			continue //ignore file if theres not apiref
 		}
 		destPath := filepath.Join(cnf.OutputPath, "content", path)
-		err = utils.CreateFileWithApiReference(*apiref,destPath)
-		if err!=nil{
+		err = utils.CreateFileWithApiReference(*apiref, destPath)
+		if err != nil {
 			fmt.Printf("Warning: Api Reference path '%s' does not exist, skipping.\n", item.Reference)
-			return fmt.Errorf("Error: error creating apireference file: '%s' : %v",destPath,err)
+			return fmt.Errorf("Error: error creating apireference file: '%s' : %v", destPath, err)
 		}
 	}
 
 	return nil
 }
-
-
