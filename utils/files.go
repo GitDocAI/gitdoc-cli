@@ -101,6 +101,10 @@ func matchesAnyFilter(name string, filters []string) bool {
 	return false
 }
 
+func ShouldExclude(name string, excludeFilters []string) bool {
+	return matchesAnyFilter(name, excludeFilters)
+}
+
 func CopyFile(src, dst string, mode os.FileMode) error {
 	sourceFile, err := os.Open(src)
 	if err != nil {

@@ -13,6 +13,7 @@ var (
 	DefaultThemesPath   = fmt.Sprintf("%s/themes", DefaultGitDocAIPath)
 	ConfigFileName      = "gitdocai.config.json"
 	ClearExceptionDirs  = []string{"startswith:.", "equals:node_modules"}
+	ThemeExcludeDirs    = []string{"equals:content", "equals:public", "equals:gitdocai.config.json"}
 )
 
 func GetThemesPath() string {

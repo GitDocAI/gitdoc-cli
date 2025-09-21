@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/YHVCorp/gitdocai-cli/config"
 	"github.com/YHVCorp/gitdocai-cli/utils"
@@ -64,6 +65,21 @@ func CopyTheme(targetDir string, themeName string) error {
 		if err != nil {
 			return err
 		}
+
+		// Skip excluded files and directories at the root level
+		if relPath != "." {
+			name := filepath.Base(relPath)
+			// For root level items, check if they should be excluded
+			if !strings.Contains(relPath, string(os.PathSeparator)) {
+				if utils.ShouldExclude(name, config.ThemeExcludeDirs) {
+					if info.IsDir() {
+						return filepath.SkipDir
+					}
+					return nil
+				}
+			}
+		}
+
 		destPath := filepath.Join(targetDir, relPath)
 
 		if info.IsDir() {

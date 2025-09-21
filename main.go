@@ -63,10 +63,11 @@ Available commands:
 	// ################### Init Sample Command ###################
 	// Add the init-sample command to the root command
 	initCmd := &cobra.Command{
-		Use:   "init-sample",
-		Short: "Initialize a sample GitDocAI project",
+		Use:   "init-sample [theme]",
+		Short: "Initialize a sample GitDocAI project with the specified theme",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
-			return cmd.InitSample()
+			return cmd.InitSample(args[0])
 		},
 	}
 	rootCmd.AddCommand(initCmd)
