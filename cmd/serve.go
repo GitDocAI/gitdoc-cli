@@ -15,15 +15,20 @@ func Serve(serveInput string) error {
 
 	cnf := config.GetConfig()
 
-	errStr, isError := utils.ExecuteCmd("npm", cnf.OutputPath, "install", "--force")
-	if isError {
-		return fmt.Errorf("failed to execute npm install: %v", errStr)
-	}
+	// fmt.Print(" running npm install..." )
+	// errStr, isError := utils.ExecuteCmd("npm", cnf.OutputPath, "install", "--force")
+	// if isError {
+	// 	return fmt.Errorf("failed to execute npm install: %v", errStr)
+	// }
+
+
+	go func(){
+		InitFolderListen(*cnf)
+	}()
 
 	err = utils.RunBlockingWithTerminalIO("npm", cnf.OutputPath, "run", "dev")
 	if err != nil {
-		return fmt.Errorf("failed to run npm dev: %v", err)
+		 fmt.Errorf("failed to run npm dev: %v", err)
 	}
-
 	return nil
 }
