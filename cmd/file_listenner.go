@@ -171,6 +171,7 @@ func handleFileChange(mapping PathMapping, filePath string, operation string) {
 }
 
 func InitFolderListen(cnf config.Config) {
+
 	configFile := filepath.Join(cnf.InputPath, config.ConfigFileName)
 	if !utils.CheckIfPathExist(configFile) {
 		fmt.Printf("error: %s not found in input path: %s\n", config.ConfigFileName, cnf.InputPath)
