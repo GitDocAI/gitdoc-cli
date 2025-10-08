@@ -15,11 +15,10 @@ func Serve(serveInput string) error {
 
 	cnf := config.GetConfig()
 
-	// fmt.Print(" running npm install..." )
-	// errStr, isError := utils.ExecuteCmd("npm", cnf.OutputPath, "install", "--force")
-	// if isError {
-	// 	return fmt.Errorf("failed to execute npm install: %v", errStr)
-	// }
+	errStr, isError := utils.ExecuteCmd("npm", cnf.OutputPath, "install", "--force")
+	if isError {
+		return fmt.Errorf("failed to execute npm install: %v", errStr)
+	}
 
 
 	go func(){

@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -8,6 +10,7 @@ import (
 	"time"
 
 	"github.com/YHVCorp/gitdocai-cli/config"
+	"github.com/YHVCorp/gitdocai-cli/schemas"
 	"github.com/YHVCorp/gitdocai-cli/utils"
 	"github.com/fsnotify/fsnotify"
 )
@@ -18,6 +21,7 @@ type PathMapping struct {
 	PublicPaths  []string
 	ContentPaths []string
 	ConfigFile   string
+	SiteConfig   schemas.SiteConfig
 }
 
 func setup_watcher(mapping PathMapping, callback func(string, string)) {
@@ -30,6 +34,7 @@ func setup_watcher(mapping PathMapping, callback func(string, string)) {
 
 	files_to_listen := []string{}
 
+	files_to_listen = append(files_to_listen, mapping.InputPath)
 	files_to_listen = append(files_to_listen, mapping.ConfigFile)
 
 	for _, path := range mapping.PublicPaths {
@@ -106,7 +111,7 @@ func setup_watcher(mapping PathMapping, callback func(string, string)) {
 	<-done
 }
 
-func handleFileChange(mapping PathMapping, filePath string, operation string) {
+func handleFileChange(mapping *PathMapping, filePath string, operation string) {
 	// Determine file type and destination
 	relPath, err := filepath.Rel(mapping.InputPath, filePath)
 	if err != nil {
@@ -119,6 +124,23 @@ func handleFileChange(mapping PathMapping, filePath string, operation string) {
 	// Check if it's the config file
 	if filePath == mapping.ConfigFile {
 		destPath = filepath.Join(mapping.OutputPath, config.ConfigFileName)
+		//ignore if there was an error
+		if newConfig,err:= getConfigFileJson(mapping.ConfigFile);err==nil{
+			if hasChangedNavigation(mapping.SiteConfig,*newConfig){
+			   mapping.SiteConfig = *newConfig
+			   config := config.Config{
+					OutputPath: mapping.OutputPath,
+					InputPath: mapping.InputPath,
+					SiteConfig: *newConfig,
+				}
+			   ReplaceComponents(config)
+			   return
+			}
+		}else{
+			return
+		}
+
+
 	} else {
 		// Check if file is in public paths
 		isPublic := false
@@ -179,6 +201,7 @@ func InitFolderListen(cnf config.Config) {
 	}
 	publicPaths, contentPaths := ExtractUsedPaths(cnf.SiteConfig)
 
+
 	// Create mapping for watcher
 	mapping := PathMapping{
 		InputPath:    cnf.InputPath,
@@ -186,11 +209,12 @@ func InitFolderListen(cnf config.Config) {
 		PublicPaths:  publicPaths,
 		ContentPaths: contentPaths,
 		ConfigFile:   configFile,
+		SiteConfig:   cnf.SiteConfig,
 	}
 
 	// Start watching
 	setup_watcher(mapping, func(filePath, operation string) {
-		handleFileChange(mapping, filePath, operation)
+		handleFileChange(&mapping, filePath, operation)
 	})
 }
 
@@ -216,3 +240,28 @@ func GetDirectoryContents(src string) ([]string, error) {
 	return filepaths, nil
 }
 
+
+func getConfigFileJson(path string) (*schemas.SiteConfig,error){
+	configText,err:= os.ReadFile(path)
+	if err!=nil{
+		return nil,fmt.Errorf("error readign config File: %v",err)
+	}
+
+	var configJson schemas.SiteConfig
+	if err:=json.Unmarshal(configText,&configJson);err!=nil{
+		return nil,fmt.Errorf("Invalid Config File")
+	}
+
+	return &configJson,nil
+}
+
+func hasChangedNavigation(original schemas.SiteConfig,new_config schemas.SiteConfig) bool{
+//Verify if there's a change on navigation
+originalBytes,_ := json.Marshal(original.Navigation)
+originalHash := sha256.Sum256(originalBytes)
+newBytes,_ := json.Marshal(new_config.Navigation)
+newHash := sha256.Sum256(newBytes)
+
+return newHash != originalHash
+
+}
