@@ -14,6 +14,7 @@ import (
 func main() {
 	// Define the command-line flags and their default values
 	var serveInput, deployInput, deployOutput string
+	var webhookURL, authentication string // New variables for webhook and authentication
 
 	// ################### Root Command ###################
 	// Create the root command
@@ -39,10 +40,12 @@ Available commands:
 		Use:   "serve",
 		Short: "Serve the documentation locally",
 		RunE: func(command *cobra.Command, args []string) error {
-			return cmd.Serve(serveInput)
+			return cmd.Serve(serveInput, webhookURL, authentication) // Pass the new parameters
 		},
 	}
 	serveCmd.Flags().StringVar(&serveInput, "input", utils.GetMyPath(), "Path to the source folder containing MDX and gitdocai.config.json")
+	serveCmd.Flags().StringVar(&webhookURL, "webhook_url", "", "URL to the update webhook (optional)")
+	serveCmd.Flags().StringVar(&authentication, "authentication", "", "Webhook authentication method (optional)")
 	rootCmd.AddCommand(serveCmd)
 
 	// ################### Deploy Command ###################
@@ -96,8 +99,8 @@ Available commands:
 
 	// ################### Execute the Root Command ###################
 	// Execute the root command, which will parse the flags and run the appropriate command
-		if err := rootCmd.Execute(); err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }
