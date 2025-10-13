@@ -14,6 +14,7 @@ var (
 	ConfigFileName      = "gitdocai.config.json"
 	ClearExceptionDirs  = []string{"startswith:.", "equals:node_modules"}
 	ThemeExcludeDirs    = []string{"equals:content", "equals:public", "equals:gitdocai.config.json"}
+	WebhookRoute        = "http://localhost:%s/replace"
 )
 
 func GetThemesPath() string {

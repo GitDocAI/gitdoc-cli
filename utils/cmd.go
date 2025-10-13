@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -28,12 +29,19 @@ func ExecuteCmd(c string, dir string, arg ...string) (string, bool) {
 	return string(out[:]), false
 }
 
-func RunBlockingWithTerminalIO(command string, dir string, args ...string) error {
+func RunBlockingWithTerminalIO(command string, dir string,custom_envs map[string]string, args ...string) error {
 	cmd := exec.Command(command, args...)
 	cmd.Dir = dir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
+
+
+	env := os.Environ()
+	for k, v := range custom_envs {
+			env = append(env, fmt.Sprintf("%s=%s", k, v))
+		}
+	cmd.Env = env
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
