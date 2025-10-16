@@ -67,7 +67,7 @@ func (ws *WebhookServer) handleFileReplace(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if req.FilePath == "" || req.OldSegment == "" {
+	if req.FilePath == ""  {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(ReplaceResponse{
 			Success: false,
@@ -89,29 +89,8 @@ func (ws *WebhookServer) handleFileReplace(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	content, err := os.ReadFile(fullPath)
-	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(ReplaceResponse{
-			Success: false,
-			Error:   fmt.Sprintf("error reading file: %v", err),
-		})
-		return
-	}
 
-	fileContent := string(content)
-	if !strings.Contains(fileContent, req.OldSegment) {
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(ReplaceResponse{
-			Success: false,
-			Error:   "Pattern not found",
-		})
-		return
-	}
-
-	newContent := strings.Replace(fileContent, req.OldSegment, req.NewText, -1)
-
-	if err := os.WriteFile(fullPath, []byte(newContent), 0644); err != nil {
+	if err := os.WriteFile(fullPath, []byte(req.NewText), 0644); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(ReplaceResponse{
 			Success: false,

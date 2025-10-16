@@ -3,7 +3,6 @@ package schemas
 
 type ReplaceRequest struct {
 	FilePath   string `json:"file_path"`
-	OldSegment string `json:"old_segment"`
 	NewText    string `json:"new_text"`
 }
 
