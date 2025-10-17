@@ -46,64 +46,142 @@ func (ws *WebhookServer) handleFileReplace(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+	// Check if the request is multipart/form-data
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
+		// Parse the multipart form data
+		err := r.ParseMultipartForm(10 << 20) // 10 MB limit
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(ReplaceResponse{
+				Success: false,
+				Error:   "Error parsing multipart form",
+			})
+			return
+		}
+
+		// Get the file part
+		file, _, err := r.FormFile("binary_content")
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(ReplaceResponse{
+				Success: false,
+				Error:   "Error retrieving the file",
+			})
+			return
+		}
+		defer file.Close()
+
+		// Get the file path from the form
+		filePath := r.FormValue("file_path")
+		if filePath == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(ReplaceResponse{
+				Success: false,
+				Error:   "file_path is required in multipart form",
+			})
+			return
+		}
+
+		fullPath := filepath.Join(ws.basePath, filePath)
+		fullPath = filepath.Clean(fullPath)
+
+		if !strings.HasPrefix(fullPath, filepath.Clean(ws.basePath)) {
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(ReplaceResponse{
+				Success: false,
+				Error:   "Wrong filepath",
+			})
+			return
+		}
+
+		// Create the file
+		dst, err := os.Create(fullPath)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(ReplaceResponse{
+				Success: false,
+				Error:   fmt.Sprintf("Error creating file: %v", err),
+			})
+			return
+		}
+		defer dst.Close()
+
+		// Copy the uploaded file to the created file
+		_, err = io.Copy(dst, file)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(ReplaceResponse{
+				Success: false,
+				Error:   fmt.Sprintf("Error copying file: %v", err),
+			})
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(ReplaceResponse{
-			Success: false,
-			Error:   "wrong request",
+			Success: true,
+			Message: fmt.Sprintf("file updated: %s", fullPath),
 		})
 		return
-	}
-	defer r.Body.Close()
+	} else {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(ReplaceResponse{
+				Success: false,
+				Error:   "wrong request",
+			})
+			return
+		}
+		defer r.Body.Close()
 
-	var req ReplaceRequest
-	if err := json.Unmarshal(body, &req); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		var req ReplaceRequest
+		if err := json.Unmarshal(body, &req); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(ReplaceResponse{
+				Success: false,
+				Error:   "invalid JSON",
+			})
+			return
+		}
+
+		if req.FilePath == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(ReplaceResponse{
+				Success: false,
+				Error:   "file_path is required",
+			})
+			return
+		}
+
+		fullPath := filepath.Join(ws.basePath, req.FilePath)
+
+		fullPath = filepath.Clean(fullPath)
+
+		if !strings.HasPrefix(fullPath, filepath.Clean(ws.basePath)) {
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(ReplaceResponse{
+				Success: false,
+				Error:   "Wrong filepath",
+			})
+			return
+		}
+
+		if err := os.WriteFile(fullPath, []byte(req.NewText), 0644); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(ReplaceResponse{
+				Success: false,
+				Error:   fmt.Sprintf("Error writting to file: %v", err),
+			})
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(ReplaceResponse{
-			Success: false,
-			Error:   "invalid JSON",
+			Success: true,
+			Message: fmt.Sprintf("file updated: %s", fullPath),
 		})
-		return
 	}
-
-	if req.FilePath == ""  {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ReplaceResponse{
-			Success: false,
-			Error:   "file_path and old_segment are required",
-		})
-		return
-	}
-
-	fullPath := filepath.Join(ws.basePath, req.FilePath)
-
-	fullPath = filepath.Clean(fullPath)
-
-	if !strings.HasPrefix(fullPath, filepath.Clean(ws.basePath)) {
-		w.WriteHeader(http.StatusForbidden)
-		json.NewEncoder(w).Encode(ReplaceResponse{
-			Success: false,
-			Error:   "Wrong filepath",
-		})
-		return
-	}
-
-
-	if err := os.WriteFile(fullPath, []byte(req.NewText), 0644); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(ReplaceResponse{
-			Success: false,
-			Error:   fmt.Sprintf("Error writting to file: %v", err),
-		})
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(ReplaceResponse{
-		Success: true,
-		Message: fmt.Sprintf("file updated: %s", fullPath),
-	})
 }
 
 func (ws *WebhookServer) Start() error {

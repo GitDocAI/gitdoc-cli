@@ -4,6 +4,7 @@ package schemas
 type ReplaceRequest struct {
 	FilePath   string `json:"file_path"`
 	NewText    string `json:"new_text"`
+	IsMultipart bool   `json:"is_multipart"`
 }
 
 type ReplaceResponse struct {
