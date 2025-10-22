@@ -14,24 +14,37 @@ func InitSample(themeName string) error {
 		return fmt.Errorf("theme name is required")
 	}
 
+	utils.PrintBanner()
+	utils.PrintHeader("Initializing Sample Project")
+
+	utils.PrintStep("Downloading themes...")
 	err := DownloadThemes(false)
 	if err != nil {
+		utils.PrintError(fmt.Sprintf("Failed to download themes: %v", err))
 		return fmt.Errorf("failed to download themes: %w", err)
 	}
 
 	themeDir := filepath.Join(config.GetThemesPath(), themeName)
 	if !utils.CheckIfPathExist(themeDir) {
+		utils.PrintError(fmt.Sprintf("Theme '%s' does not exist", themeName))
 		return fmt.Errorf("theme '%s' does not exist", themeName)
 	}
 
 	currentPath := utils.GetMyPath()
 
+	utils.PrintStep(fmt.Sprintf("Copying theme '%s'...", themeName))
 	err = copyThemeToCurrentPath(themeDir, currentPath)
 	if err != nil {
+		utils.PrintError(fmt.Sprintf("Failed to copy theme files: %v", err))
 		return fmt.Errorf("failed to copy theme files: %w", err)
 	}
 
-	fmt.Printf("Sample project initialized with theme '%s' successfully.\n", themeName)
+	utils.PrintDivider()
+	utils.PrintSuccess(fmt.Sprintf("Sample project initialized with theme '%s'", themeName))
+	utils.PrintInfo("Next steps:")
+	utils.PrintList("Edit gitdocai.config.json to configure your site")
+	utils.PrintList("Add your content in MDX files")
+	utils.PrintList("Run 'gitdocai dev' to start development server")
 	return nil
 }
 

@@ -34,19 +34,33 @@ Available commands:
 		},
 	}
 
-	// #################### Serve Command ###################
-	// Create the serve command
-	serveCmd := &cobra.Command{
-		Use:   "serve",
-		Short: "Serve the documentation locally",
+	// #################### Dev Command ###################
+	// Create the dev command
+	devCmd := &cobra.Command{
+		Use:   "dev",
+		Short: "Serve the documentation locally in development mode",
 		RunE: func(command *cobra.Command, args []string) error {
-			return cmd.Serve(serveInput, webhookURL, authentication) // Pass the new parameters
+			return cmd.Serve(serveInput, webhookURL, authentication, "dev")
 		},
 	}
-	serveCmd.Flags().StringVar(&serveInput, "input", utils.GetMyPath(), "Path to the source folder containing MDX and gitdocai.config.json")
-	serveCmd.Flags().StringVar(&webhookURL, "webhook_url", "", "URL to the update webhook (optional)")
-	serveCmd.Flags().StringVar(&authentication, "authentication", "", "Webhook authentication method (optional)")
-	rootCmd.AddCommand(serveCmd)
+	devCmd.Flags().StringVar(&serveInput, "input", utils.GetMyPath(), "Path to the source folder containing MDX and gitdocai.config.json")
+	devCmd.Flags().StringVar(&webhookURL, "webhook_url", "", "URL to the update webhook (optional)")
+	devCmd.Flags().StringVar(&authentication, "authentication", "", "Webhook authentication method (optional)")
+	rootCmd.AddCommand(devCmd)
+
+	// #################### Preview Command ###################
+	// Create the preview command
+	previewCmd := &cobra.Command{
+		Use:   "preview",
+		Short: "Preview the documentation site",
+		RunE: func(command *cobra.Command, args []string) error {
+			return cmd.Serve(serveInput, webhookURL, authentication, "preview")
+		},
+	}
+	previewCmd.Flags().StringVar(&serveInput, "input", utils.GetMyPath(), "Path to the source folder containing MDX and gitdocai.config.json")
+	previewCmd.Flags().StringVar(&webhookURL, "webhook_url", "", "URL to the update webhook (optional)")
+	previewCmd.Flags().StringVar(&authentication, "authentication", "", "Webhook authentication method (optional)")
+	rootCmd.AddCommand(previewCmd)
 
 	// ################### Deploy Command ###################
 	// Create the deploy command
@@ -55,7 +69,7 @@ Available commands:
 		Short:  "[Internal] Deploy a GitDocAI project",
 		Hidden: true,
 		RunE: func(command *cobra.Command, args []string) error {
-			return cmd.Deploy(deployInput, deployOutput)
+			return cmd.Deploy(deployInput, deployOutput, false)
 		},
 	}
 
@@ -81,7 +95,16 @@ Available commands:
 		Use:   "update-themes",
 		Short: "Download or update the default themes",
 		RunE: func(command *cobra.Command, args []string) error {
-			return cmd.DownloadThemes(true)
+			utils.PrintBanner()
+			utils.PrintHeader("Updating Themes")
+			err := cmd.DownloadThemes(true)
+			if err != nil {
+				utils.PrintError(fmt.Sprintf("Failed to update themes: %v", err))
+				return err
+			}
+			utils.PrintDivider()
+			utils.PrintInfo("Themes are now up to date!")
+			return nil
 		},
 	}
 	rootCmd.AddCommand(updateThemesCmd)
@@ -92,7 +115,12 @@ Available commands:
 		Use:   "version",
 		Short: "Display the current version of GitDocAI CLI",
 		Run: func(command *cobra.Command, args []string) {
-			fmt.Printf("GitDocAI CLI version: %s\n", config.VERSION)
+			utils.PrintBanner()
+			utils.PrintLogo(config.VERSION)
+			utils.PrintDivider()
+			utils.PrintInfo("A CLI tool for building beautiful documentation sites")
+			utils.PrintURL("Documentation", "https://docs.gitdoc.ai")
+			utils.PrintURL("GitHub", "https://github.com/GitDocAI/gitdocai-cli")
 		},
 	}
 	rootCmd.AddCommand(versionCmd)

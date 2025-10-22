@@ -27,23 +27,27 @@ func DownloadThemes(forceUpdate bool) error {
 	}
 
 	if !exists {
-		fmt.Println("Downloading Themes...")
+		if forceUpdate {
+			utils.PrintStep("Downloading themes...")
+		}
 		cloneCmd := exec.Command("git", "clone", config.ThemesRepositoryURL, config.GetThemesPath())
 		if err := cloneCmd.Run(); err != nil {
 			if err := cleanAndCloneThemesRepo(); err != nil {
 				return err
 			}
 		}
-		fmt.Println("Themes downloaded successfully.")
+		if forceUpdate {
+			utils.PrintSuccess("Themes downloaded successfully")
+		}
 	} else if forceUpdate {
-		fmt.Println("Updating Themes...")
+		utils.PrintStep("Updating themes...")
 		updateCmd := exec.Command("git", "-C", config.GetThemesPath(), "pull")
 		if err := updateCmd.Run(); err != nil {
 			if err := cleanAndCloneThemesRepo(); err != nil {
 				return err
 			}
 		}
-		fmt.Println("Themes downloaded successfully.")
+		utils.PrintSuccess("Themes updated successfully")
 	}
 
 	return nil

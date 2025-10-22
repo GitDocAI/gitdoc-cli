@@ -118,28 +118,26 @@ func handleFileChange(mapping *PathMapping, filePath string, operation string) {
 		return
 	}
 
-
 	var destPath string
 
 	// Check if it's the config file
 	if filePath == mapping.ConfigFile {
 		destPath = filepath.Join(mapping.OutputPath, config.ConfigFileName)
 		//ignore if there was an error
-		if newConfig,err:= getConfigFileJson(mapping.ConfigFile);err==nil{
-			if hasChangedNavigation(mapping.SiteConfig,*newConfig){
-			   mapping.SiteConfig = *newConfig
-			   config := config.Config{
+		if newConfig, err := getConfigFileJson(mapping.ConfigFile); err == nil {
+			if hasChangedNavigation(mapping.SiteConfig, *newConfig) {
+				mapping.SiteConfig = *newConfig
+				config := config.Config{
 					OutputPath: mapping.OutputPath,
-					InputPath: mapping.InputPath,
+					InputPath:  mapping.InputPath,
 					SiteConfig: *newConfig,
 				}
-			   ReplaceComponents(config)
-			   return
+				ReplaceComponents(config)
+				return
 			}
-		}else{
+		} else {
 			return
 		}
-
 
 	} else {
 		// Check if file is in public paths
@@ -201,7 +199,6 @@ func InitFolderListen(cnf config.Config) {
 	}
 	publicPaths, contentPaths := ExtractUsedPaths(cnf.SiteConfig)
 
-
 	// Create mapping for watcher
 	mapping := PathMapping{
 		InputPath:    cnf.InputPath,
@@ -240,28 +237,27 @@ func GetDirectoryContents(src string) ([]string, error) {
 	return filepaths, nil
 }
 
-
-func getConfigFileJson(path string) (*schemas.SiteConfig,error){
-	configText,err:= os.ReadFile(path)
-	if err!=nil{
-		return nil,fmt.Errorf("error readign config File: %v",err)
+func getConfigFileJson(path string) (*schemas.SiteConfig, error) {
+	configText, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("error readign config File: %v", err)
 	}
 
 	var configJson schemas.SiteConfig
-	if err:=json.Unmarshal(configText,&configJson);err!=nil{
-		return nil,fmt.Errorf("Invalid Config File")
+	if err := json.Unmarshal(configText, &configJson); err != nil {
+		return nil, fmt.Errorf("invalid config file")
 	}
 
-	return &configJson,nil
+	return &configJson, nil
 }
 
-func hasChangedNavigation(original schemas.SiteConfig,new_config schemas.SiteConfig) bool{
-//Verify if there's a change on navigation
-originalBytes,_ := json.Marshal(original.Navigation)
-originalHash := sha256.Sum256(originalBytes)
-newBytes,_ := json.Marshal(new_config.Navigation)
-newHash := sha256.Sum256(newBytes)
+func hasChangedNavigation(original schemas.SiteConfig, new_config schemas.SiteConfig) bool {
+	// Verify if there's a change on navigation
+	originalBytes, _ := json.Marshal(original.Navigation)
+	originalHash := sha256.Sum256(originalBytes)
+	newBytes, _ := json.Marshal(new_config.Navigation)
+	newHash := sha256.Sum256(newBytes)
 
-return newHash != originalHash
+	return newHash != originalHash
 
 }

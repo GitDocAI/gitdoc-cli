@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
-	"os"
+
 	"github.com/YHVCorp/gitdocai-cli/schemas"
 )
 
@@ -30,7 +31,6 @@ func (ws *WebhookServer) handleFileReplace(w http.ResponseWriter, r *http.Reques
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "*")
-	w.Header().Set("Content-Type", "application/json")
 
 	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusOK)
