@@ -25,7 +25,9 @@ func main() {
 
 Available commands:
 
-- serve: Starts a local server to preview the documentation site
+- dev: Starts a local server in development mode
+- preview: Preview the documentation site
+- live-editor: Start the live editor for documentation
 - init-sample: Initializes a sample project structure
 - update-themes: Downloads or updates the default themes
 - version: Displays the current version of GitDocAI CLI`,
@@ -61,6 +63,20 @@ Available commands:
 	previewCmd.Flags().StringVar(&webhookURL, "webhook_url", "", "URL to the update webhook (optional)")
 	previewCmd.Flags().StringVar(&authentication, "authentication", "", "Webhook authentication method (optional)")
 	rootCmd.AddCommand(previewCmd)
+
+	// #################### Live Editor Command ###################
+	// Create the live-editor command
+	liveEditorCmd := &cobra.Command{
+		Use:   "live-editor",
+		Short: "Start the live editor for documentation",
+		RunE: func(command *cobra.Command, args []string) error {
+			return cmd.Serve(serveInput, webhookURL, authentication, "live-editor")
+		},
+	}
+	liveEditorCmd.Flags().StringVar(&serveInput, "input", utils.GetMyPath(), "Path to the source folder containing MDX and gitdocai.config.json")
+	liveEditorCmd.Flags().StringVar(&webhookURL, "webhook_url", "", "URL to the update webhook (optional)")
+	liveEditorCmd.Flags().StringVar(&authentication, "authentication", "", "Webhook authentication method (optional)")
+	rootCmd.AddCommand(liveEditorCmd)
 
 	// ################### Deploy Command ###################
 	// Create the deploy command

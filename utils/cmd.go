@@ -61,6 +61,8 @@ var outputWhitelistPatterns = []string{
 var outputBlacklistPatterns = []string{
 	"nextra]",
 	"Init git repository failed",
+	"Only log non-404 errors",
+	"} catch (error) {",
 }
 
 // shouldShowLine checks if a line should be shown based on whitelist patterns
