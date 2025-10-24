@@ -39,6 +39,10 @@ func setup_watcher(mapping PathMapping, callback func(string, string)) {
 
 	for _, path := range mapping.PublicPaths {
 		srcPath := filepath.Join(mapping.InputPath, path)
+		// Check if directory exists before trying to watch it
+		if _, err := os.Stat(srcPath); os.IsNotExist(err) {
+			continue
+		}
 		files_to_listen = append(files_to_listen, srcPath)
 		inner, err := GetDirectoryContents(srcPath)
 		if err != nil {
@@ -50,6 +54,10 @@ func setup_watcher(mapping PathMapping, callback func(string, string)) {
 
 	for _, path := range mapping.ContentPaths {
 		srcPath := filepath.Join(mapping.InputPath, path)
+		// Check if directory exists before trying to watch it
+		if _, err := os.Stat(srcPath); os.IsNotExist(err) {
+			continue
+		}
 		files_to_listen = append(files_to_listen, srcPath)
 		inner, err := GetDirectoryContents(srcPath)
 		if err != nil {
@@ -111,7 +119,35 @@ func setup_watcher(mapping PathMapping, callback func(string, string)) {
 	<-done
 }
 
+func shouldIgnoreFile(filePath string) bool {
+	base := filepath.Base(filePath)
+
+	// Ignore temporary files
+	if strings.HasPrefix(base, ".") {
+		return true
+	}
+	if strings.HasSuffix(base, "~") {
+		return true
+	}
+	if strings.Contains(base, ".tmp") {
+		return true
+	}
+	if strings.HasSuffix(base, ".swp") {
+		return true
+	}
+	if strings.HasSuffix(base, ".swx") {
+		return true
+	}
+
+	return false
+}
+
 func handleFileChange(mapping *PathMapping, filePath string, operation string) {
+	// Ignore temporary and hidden files
+	if shouldIgnoreFile(filePath) {
+		return
+	}
+
 	// Determine file type and destination
 	relPath, err := filepath.Rel(mapping.InputPath, filePath)
 	if err != nil {
@@ -179,12 +215,12 @@ func handleFileChange(mapping *PathMapping, filePath string, operation string) {
 		}
 	case "remove":
 		// Remove file from output
-		if err := os.Remove(destPath); err != nil && !os.IsNotExist(err) {
+		if err := os.RemoveAll(destPath); err != nil && !os.IsNotExist(err) {
 			fmt.Printf("error removing file %s: %v\n", destPath, err)
 		}
 	case "rename":
 		// For rename, we remove the old file (new file will trigger create event)
-		if err := os.Remove(destPath); err != nil && !os.IsNotExist(err) {
+		if err := os.RemoveAll(destPath); err != nil && !os.IsNotExist(err) {
 			fmt.Printf("error removing renamed file %s: %v\n", destPath, err)
 		}
 	}

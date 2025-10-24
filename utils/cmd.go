@@ -8,6 +8,8 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"regexp"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -57,6 +59,7 @@ var outputWhitelistPatterns = []string{
 // outputBlacklistPatterns contains patterns that should never be shown
 // These take precedence over whitelist patterns
 var outputBlacklistPatterns = []string{
+	"nextra]",
 	"Init git repository failed",
 }
 
@@ -85,8 +88,37 @@ func shouldShowLine(line string) bool {
 	return false
 }
 
+// openBrowser opens the specified URL in the default browser
+func openBrowser(url string) error {
+	var cmd *exec.Cmd
+
+	switch runtime.GOOS {
+	case "linux":
+		cmd = exec.Command("xdg-open", url)
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	case "darwin":
+		cmd = exec.Command("open", url)
+	default:
+		return fmt.Errorf("unsupported platform")
+	}
+
+	return cmd.Start()
+}
+
+// extractLocalURL extracts the localhost URL from a line like "- Local:        http://localhost:3000"
+func extractLocalURL(line string) string {
+	// Pattern to match URLs after "Local:"
+	re := regexp.MustCompile(`Local:\s+(https?://localhost:\d+|https?://127\.0\.0\.1:\d+)`)
+	matches := re.FindStringSubmatch(line)
+	if len(matches) > 1 {
+		return matches[1]
+	}
+	return ""
+}
+
 // filterOutput reads from a reader and writes to a writer, showing only whitelisted lines
-func filterOutput(reader io.Reader, writer io.Writer, stopSpinner chan bool, spinnerControl chan string, clearLine chan bool) {
+func filterOutput(reader io.Reader, writer io.Writer, stopSpinner chan bool, spinnerControl chan string, clearLine chan bool, browserOpened *bool) {
 	scanner := bufio.NewScanner(reader)
 
 	for scanner.Scan() {
@@ -103,6 +135,17 @@ func filterOutput(reader io.Reader, writer io.Writer, stopSpinner chan bool, spi
 			}
 
 			fmt.Fprintln(writer, line)
+
+			// Check for localhost URL and open browser
+			if browserOpened != nil && !*browserOpened {
+				if url := extractLocalURL(line); url != "" {
+					*browserOpened = true
+					go func() {
+						time.Sleep(2 * time.Second)
+						_ = openBrowser(url)
+					}()
+				}
+			}
 
 			// Stop spinner only when "Ready" appears
 			if stopSpinner != nil && strings.Contains(line, "✓ Ready in") {
@@ -157,6 +200,9 @@ func RunBlockingWithTerminalIO(command string, dir string, custom_envs map[strin
 	spinnerControl := make(chan string, 10)
 	clearLine := make(chan bool, 10)
 
+	// Track if browser has been opened
+	browserOpened := false
+
 	// Start spinner
 	s := NewSpinner("Compiling project...")
 	s.Start()
@@ -182,8 +228,8 @@ func RunBlockingWithTerminalIO(command string, dir string, custom_envs map[strin
 	}()
 
 	// Filter output in separate goroutines
-	go filterOutput(stdoutPipe, os.Stdout, stopSpinner, spinnerControl, clearLine)
-	go filterOutput(stderrPipe, os.Stderr, nil, nil, nil)
+	go filterOutput(stdoutPipe, os.Stdout, stopSpinner, spinnerControl, clearLine, &browserOpened)
+	go filterOutput(stderrPipe, os.Stderr, nil, nil, nil, nil)
 
 	// Wait for command to finish
 	err = cmd.Wait()
