@@ -2,12 +2,15 @@ package cmd
 
 import (
 	"fmt"
+	"path/filepath"
+	"strconv"
 
 	"github.com/YHVCorp/gitdocai-cli/config"
+	"github.com/YHVCorp/gitdocai-cli/schemas"
 	"github.com/YHVCorp/gitdocai-cli/utils"
 )
 
-func Serve(serveInput, webhook_url, authentication, command string) error {
+func Serve(serveInput, webhookURL, authentication, command string) error {
 	utils.PrintBanner()
 	utils.PrintHeader(fmt.Sprintf("Starting %s mode", command))
 
@@ -17,21 +20,39 @@ func Serve(serveInput, webhook_url, authentication, command string) error {
 		return fmt.Errorf("failed to deploy: %v", err)
 	}
 
-	if webhook_url == "" {
-		webhook_url = fmt.Sprintf(config.WebhookRoute, "8082")
-		webhook := NewWebhookServer(serveInput, "8082")
-		go func() {
-			webhook.Start()
-		}()
-		utils.PrintSuccess("Webhook server started on port 8082")
+	// Obtener configuración global del proyecto
+	cnf := config.GetConfig()
+
+
+	if webhookURL == "" {
+		docs_file:=filepath.Join(cnf.OutputPath,"public")
+		webhookCfg := schemas.Config{
+			Port:        "8082",
+			AllowOrigin: "*",
+			DocsPath:    docs_file,
+			ConfigPath:  filepath.Join(docs_file,config.ConfigFileName),
+		}
+
+		port, err := StartWebhook(webhookCfg)
+		if err != nil {
+			utils.PrintError(fmt.Sprintf("Failed to start webhook server: %v", err))
+			return fmt.Errorf("failed to start webhook server: %v", err)
+		}
+		webhookURL = fmt.Sprintf("http://localhost:%d/api", port)
 	}
 
-	//this is for now is just a test mode for local dev
-	envVars := map[string]string{
-		"WEBHOOK_URL":    webhook_url,
-		"AUTHENTICATION": authentication,
+	sourceMode := "dev"
+	if command == "preview" {
+		sourceMode = "production"
 	}
-	cnf := config.GetConfig()
+
+	envVars := map[string]any{
+		"VITE_MODE":        	  sourceMode,
+		"VITE_BACKEND_URL":  	  webhookURL,
+		"VITE_AUTHENTICATION":    authentication,
+		"VITE_USE_BACKEND":       strconv.FormatBool(sourceMode == "dev"),
+		"VITE_SOURCE":       	  "/docs",
+	}
 
 	err = utils.RunWithSpinner("Installing dependencies...", func() error {
 		errStr, isError := utils.ExecuteCmd("npm", cnf.OutputPath, "install", "--force")
@@ -60,5 +81,7 @@ func Serve(serveInput, webhook_url, authentication, command string) error {
 		utils.PrintError(fmt.Sprintf("Failed to run npm %s: %v", command, err))
 		return fmt.Errorf("failed to run npm %s: %v", command, err)
 	}
+
 	return nil
 }
+

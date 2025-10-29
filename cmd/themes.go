@@ -90,7 +90,7 @@ func CopyTheme(targetDir string, themeName string) error {
 			return os.MkdirAll(destPath, info.Mode())
 		}
 
-		return utils.CopyFile(path, destPath, info.Mode())
+		return utils.CopyFile(path, destPath, info.Mode(),false)
 	})
 
 	if err != nil {

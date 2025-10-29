@@ -192,7 +192,7 @@ func handleFileChange(mapping *PathMapping, filePath string, operation string) {
 			for _, contentPath := range mapping.ContentPaths {
 				if strings.HasPrefix(relPath, contentPath) {
 					// Map to output/content
-					destPath = filepath.Join(mapping.OutputPath, "content", relPath)
+					destPath = filepath.Join(mapping.OutputPath, "public", relPath)
 					break
 				}
 			}
@@ -210,7 +210,7 @@ func handleFileChange(mapping *PathMapping, filePath string, operation string) {
 		}
 
 		// Copy file
-		if err := utils.CopyFile(filePath, destPath, os.FileMode(0644)); err != nil {
+		if err := utils.CopyFile(filePath, destPath, os.FileMode(0644),false); err != nil {
 			fmt.Printf("error copying file %s to %s: %v\n", filePath, destPath, err)
 		}
 	case "remove":
@@ -227,7 +227,6 @@ func handleFileChange(mapping *PathMapping, filePath string, operation string) {
 }
 
 func InitFolderListen(cnf config.Config) {
-
 	configFile := filepath.Join(cnf.InputPath, config.ConfigFileName)
 	if !utils.CheckIfPathExist(configFile) {
 		fmt.Printf("error: %s not found in input path: %s\n", config.ConfigFileName, cnf.InputPath)

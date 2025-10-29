@@ -8,6 +8,7 @@ require (
 )
 
 require (
+	github.com/GitDocAI/inkflow v0.0.0-20251028212419-a83002363f48 // indirect
 	github.com/briandowns/spinner v1.23.2 // indirect
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be // indirect
 	github.com/fatih/color v1.18.0 // indirect
@@ -25,6 +26,7 @@ require (
 	github.com/perimeterx/marshmallow v1.1.5 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/woodsbury/decimal128 v1.3.0 // indirect
+	github.com/yuin/goldmark v1.7.13 // indirect
 	golang.org/x/sys v0.25.0 // indirect
 	golang.org/x/term v0.1.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

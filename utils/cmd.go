@@ -160,7 +160,7 @@ func filterOutput(reader io.Reader, writer io.Writer, stopSpinner chan bool, spi
 	}
 }
 
-func RunBlockingWithTerminalIO(command string, dir string, custom_envs map[string]string, args ...string) error {
+func RunBlockingWithTerminalIO(command string, dir string, custom_envs map[string]any, args ...string) error {
 	cmd := exec.Command(command, args...)
 	cmd.Dir = dir
 	cmd.Stdin = os.Stdin
