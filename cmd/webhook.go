@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/GitDocAI/inkflow"
 	"github.com/YHVCorp/gitdocai-cli/schemas"
 	"github.com/YHVCorp/gitdocai-cli/utils"
-	"github.com/GitDocAI/inkflow"
 )
 
 // Config holds server configuration passed to StartWebhook.
@@ -38,7 +38,7 @@ func StartWebhook(cfg Config) (int, error) {
 		cfg.Port = "8080"
 	}
 	if cfg.AllowOrigin == "" {
-		cfg.AllowOrigin = "http://localhost:5173"
+		cfg.AllowOrigin = "http://localhost:8080"
 	}
 
 	// Resolve absolute paths for docs, input, and config
@@ -79,6 +79,16 @@ func StartWebhook(cfg Config) (int, error) {
 	mux.HandleFunc("/api/files/upload", corsMiddleware(authMiddleware(uploadFileHandler)))
 	mux.HandleFunc("/api/files/rename", corsMiddleware(authMiddleware(renameFileHandler)))
 	mux.HandleFunc("/api/health", corsMiddleware(authMiddleware(healthHandler)))
+
+	fileServer := http.FileServer(http.Dir(webhookConfig.BuildPath))
+	mux.HandleFunc("/", corsMiddleware(authMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		//ignore api endpoints
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			http.NotFound(w, r)
+			return
+		}
+		fileServer.ServeHTTP(w, r)
+	})))
 
 	// Port scanning: try ports starting at cfg.Port and increment until free
 	startPort, err := parsePort(cfg.Port)

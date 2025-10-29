@@ -57,7 +57,7 @@ func Serve(serveInput, command string) error {
 		},
 	}
 
-	port, err := StartWebhook(webhookCfg)
+	_, err = StartWebhook(webhookCfg)
 	if err != nil {
 		utils.PrintError(fmt.Sprintf("Failed to start webhook server: %v", err))
 		return fmt.Errorf("failed to start webhook server: %v", err)
@@ -100,11 +100,12 @@ func Serve(serveInput, command string) error {
 	utils.PrintSection(fmt.Sprintf("Running npm %s", command))
 	utils.PrintDivider()
 
-	err = utils.RunBlockingWithTerminalIO("npm", cnf.OutputPath, envVars, "run", command)
+	err = utils.RunBlockingWithTerminalIO("npm", cnf.OutputPath, envVars, "run", "build")
 	if err != nil {
 		utils.PrintError(fmt.Sprintf("Failed to run npm %s: %v", command, err))
 		return fmt.Errorf("failed to run npm %s: %v", command, err)
 	}
 
+	select {}
 	return nil
 }

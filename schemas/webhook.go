@@ -2,6 +2,7 @@ package schemas
 // Config holds server configuration passed to StartWebhook.
 type Config struct {
 	Port           		string         `json:"port"`
+	BuildPath			string 		   `json:"build_path"`
 	DocsPath       		string         `json:"docs_path"`
 	InputPath      		string         `json:"input_path"`
 	ConfigPath     		string         `json:"config_path"`
