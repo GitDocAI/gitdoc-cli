@@ -12,6 +12,7 @@ import (
 	"github.com/YHVCorp/gitdocai-cli/config"
 	"github.com/YHVCorp/gitdocai-cli/schemas"
 	"github.com/YHVCorp/gitdocai-cli/utils"
+	"github.com/GitDocAI/inkflow"
 	"github.com/fsnotify/fsnotify"
 )
 
@@ -209,19 +210,47 @@ func handleFileChange(mapping *PathMapping, filePath string, operation string) {
 			return
 		}
 
-		// Copy file
-		if err := utils.CopyFile(filePath, destPath, os.FileMode(0644),false); err != nil {
-			fmt.Printf("error copying file %s to %s: %v\n", filePath, destPath, err)
+		// Check if this is an MDX file in content paths
+		isMDX := strings.HasSuffix(strings.ToLower(filePath), ".mdx")
+		isInContentPaths := false
+		for _, contentPath := range mapping.ContentPaths {
+			if strings.HasPrefix(relPath, contentPath) {
+				isInContentPaths = true
+				break
+			}
+		}
+
+		if isMDX && isInContentPaths {
+			// Convert MDX to JSON
+			if err := convertMDXToJSON(filePath, destPath); err != nil {
+				fmt.Printf("error converting MDX to JSON %s: %v\n", filePath, err)
+			}
+		} else {
+			// Copy file as-is
+			if err := utils.CopyFile(filePath, destPath, os.FileMode(0644), false); err != nil {
+				fmt.Printf("error copying file %s to %s: %v\n", filePath, destPath, err)
+			}
 		}
 	case "remove":
+		// For MDX files, remove the .json file instead
+		removeDestPath := destPath
+		if strings.HasSuffix(strings.ToLower(filePath), ".mdx") {
+			removeDestPath = strings.Replace(destPath, filepath.Ext(destPath), ".json", 1)
+		}
+
 		// Remove file from output
-		if err := os.RemoveAll(destPath); err != nil && !os.IsNotExist(err) {
-			fmt.Printf("error removing file %s: %v\n", destPath, err)
+		if err := os.RemoveAll(removeDestPath); err != nil && !os.IsNotExist(err) {
+			fmt.Printf("error removing file %s: %v\n", removeDestPath, err)
 		}
 	case "rename":
 		// For rename, we remove the old file (new file will trigger create event)
-		if err := os.RemoveAll(destPath); err != nil && !os.IsNotExist(err) {
-			fmt.Printf("error removing renamed file %s: %v\n", destPath, err)
+		removeDestPath := destPath
+		if strings.HasSuffix(strings.ToLower(filePath), ".mdx") {
+			removeDestPath = strings.Replace(destPath, filepath.Ext(destPath), ".json", 1)
+		}
+
+		if err := os.RemoveAll(removeDestPath); err != nil && !os.IsNotExist(err) {
+			fmt.Printf("error removing renamed file %s: %v\n", removeDestPath, err)
 		}
 	}
 }
@@ -295,4 +324,38 @@ func hasChangedNavigation(original schemas.SiteConfig, new_config schemas.SiteCo
 
 	return newHash != originalHash
 
+}
+
+// convertMDXToJSON reads an MDX file, parses it, and writes it as JSON
+func convertMDXToJSON(mdxFilePath, destPath string) error {
+	// Read the MDX file
+	content, err := os.ReadFile(mdxFilePath)
+	if err != nil {
+		return fmt.Errorf("error reading MDX file: %v", err)
+	}
+
+	// Create MDX parser
+	mdxToJsonParser := inkflow.NewParser(nil)
+
+	// Parse the MDX content
+	result, err := mdxToJsonParser.Parse(string(content))
+	if err != nil {
+		return fmt.Errorf("error parsing MDX content: %v", err)
+	}
+
+	// Marshal the parsed content to JSON
+	jsonData, err := json.Marshal(result)
+	if err != nil {
+		return fmt.Errorf("error marshaling JSON: %v", err)
+	}
+
+	// Change the file extension to .json
+	jsonDestPath := strings.Replace(destPath, filepath.Ext(destPath), ".json", 1)
+
+	// Write the JSON data to the destination file
+	if err := os.WriteFile(jsonDestPath, jsonData, 0644); err != nil {
+		return fmt.Errorf("error writing JSON file: %v", err)
+	}
+
+	return nil
 }

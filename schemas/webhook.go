@@ -3,6 +3,7 @@ package schemas
 type Config struct {
 	Port           		string         `json:"port"`
 	DocsPath       		string         `json:"docs_path"`
+	InputPath      		string         `json:"input_path"`
 	ConfigPath     		string         `json:"config_path"`
 	AllowOrigin    		string 		   `json:"allow_origin"`
 	RemoteFileSystemUrl string 		   `json:"remote_fielsystem_url"`

@@ -4,18 +4,36 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 
 	"github.com/YHVCorp/gitdocai-cli/config"
 	"github.com/YHVCorp/gitdocai-cli/schemas"
 	"github.com/YHVCorp/gitdocai-cli/utils"
 )
 
-func Serve(serveInput, webhookURL, authentication, command string) error {
+func Serve(serveInput, command string) error {
 	utils.PrintBanner()
 	utils.PrintHeader(fmt.Sprintf("Starting %s mode", command))
 
-	err := Deploy(serveInput, "", true)
+	// Start flusher service for production mode
+	if command == "prod" {
+		flusher, err := StartFlusher()
+		if err != nil {
+			utils.PrintError(fmt.Sprintf("Failed to start flusher service: %v", err))
+			return fmt.Errorf("failed to start flusher service: %v", err)
+		}
+		defer flusher.Stop()
+		utils.PrintDivider()
+	}
+
+	utils.PrintStep("Checking for theme updates...")
+	err := DownloadThemes(true)
+	if err != nil {
+		utils.PrintError(fmt.Sprintf("Failed to update themes: %v", err))
+		return fmt.Errorf("failed to update themes: %v", err)
+	}
+	utils.PrintDivider()
+
+	err = Deploy(serveInput, "", true)
 	if err != nil {
 		utils.PrintError(fmt.Sprintf("Failed to deploy: %v", err))
 		return fmt.Errorf("failed to deploy: %v", err)
@@ -24,18 +42,18 @@ func Serve(serveInput, webhookURL, authentication, command string) error {
 	// Obtener configuración global del proyecto
 	cnf := config.GetConfig()
 
-
-	docs_file:=filepath.Join(cnf.OutputPath,"public")
+	docs_file := filepath.Join(cnf.OutputPath, "public")
 	webhookCfg := schemas.Config{
-		Port:        "8082",
-		AllowOrigin: "*",
-		DocsPath:    docs_file,
-		ConfigPath:  filepath.Join(docs_file,config.ConfigFileName),
+		Port:                "8082",
+		AllowOrigin:         "*",
+		DocsPath:            docs_file,
+		InputPath:           cnf.InputPath,
+		ConfigPath:          filepath.Join(docs_file, config.ConfigFileName),
 		RemoteFileSystemUrl: os.Getenv("FILESYSTEM_API_URL"),
-		Authentication:schemas.Authentication{
+		Authentication: schemas.Authentication{
 			OrganizationID: os.Getenv("ORGANIZATION_ID"),
-			ProjectID: os.Getenv("ORGANIZATION_ID"),
-			SessionToken: os.Getenv("SESSION_TOKEN"),
+			ProjectID:      os.Getenv("ORGANIZATION_ID"),
+			SessionToken:   os.Getenv("SESSION_TOKEN"),
 		},
 	}
 
@@ -44,19 +62,20 @@ func Serve(serveInput, webhookURL, authentication, command string) error {
 		utils.PrintError(fmt.Sprintf("Failed to start webhook server: %v", err))
 		return fmt.Errorf("failed to start webhook server: %v", err)
 	}
-	webhookURL = fmt.Sprintf("http://localhost:%d/api", port)
+	webhookURL := fmt.Sprintf("http://localhost:%d/api", port)
 
 	sourceMode := "dev"
 	if command == "preview" {
 		sourceMode = "production"
+	} else if command == "prod" {
+		sourceMode = "production"
 	}
 
 	envVars := map[string]any{
-		"VITE_MODE":        	  sourceMode,
-		"VITE_BACKEND_URL":  	  webhookURL,
-		"VITE_AUTHENTICATION":    authentication,
-		"VITE_USE_BACKEND":       strconv.FormatBool(sourceMode == "dev"),
-		"VITE_SOURCE":       	  "/docs",
+		"VITE_MODE":        sourceMode,
+		"VITE_BACKEND_URL": webhookURL,
+		"VITE_USE_BACKEND": sourceMode == "dev",
+		"VITE_SOURCE":      "/docs",
 	}
 
 	err = utils.RunWithSpinner("Installing dependencies...", func() error {
@@ -89,4 +108,3 @@ func Serve(serveInput, webhookURL, authentication, command string) error {
 
 	return nil
 }
-

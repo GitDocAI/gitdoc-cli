@@ -15,14 +15,16 @@ import (
 
 	"github.com/YHVCorp/gitdocai-cli/schemas"
 	"github.com/YHVCorp/gitdocai-cli/utils"
+	"github.com/GitDocAI/inkflow"
 )
 
 // Config holds server configuration passed to StartWebhook.
 type Config = schemas.Config
+
 // Request payloads
-type SaveContentRequest  = schemas.SaveContentRequest
-type UploadFileRequest  = schemas.UploadFileRequest
-type RenameFileRequest  = schemas.RenameFileRequest
+type SaveContentRequest = schemas.SaveContentRequest
+type UploadFileRequest = schemas.UploadFileRequest
+type RenameFileRequest = schemas.RenameFileRequest
 
 var webhookConfig Config
 var requestClient *utils.RemoteClient
@@ -39,31 +41,39 @@ func StartWebhook(cfg Config) (int, error) {
 		cfg.AllowOrigin = "http://localhost:5173"
 	}
 
-	// Resolve absolute paths for docs and config
+	// Resolve absolute paths for docs, input, and config
 	absDocsPath, err := filepath.Abs(cfg.DocsPath)
 	if err != nil {
 		return 0, fmt.Errorf("failed to resolve docs path: %w", err)
+	}
+	absInputPath, err := filepath.Abs(cfg.InputPath)
+	if err != nil {
+		return 0, fmt.Errorf("failed to resolve input path: %w", err)
 	}
 	absConfigPath, err := filepath.Abs(cfg.ConfigPath)
 	if err != nil {
 		return 0, fmt.Errorf("failed to resolve config path: %w", err)
 	}
 	cfg.DocsPath = absDocsPath
+	cfg.InputPath = absInputPath
 	cfg.ConfigPath = absConfigPath
 
 	if _, err := os.Stat(cfg.DocsPath); os.IsNotExist(err) {
 		return 0, fmt.Errorf("docs path does not exist: %s", cfg.DocsPath)
 	}
+	if _, err := os.Stat(cfg.InputPath); os.IsNotExist(err) {
+		return 0, fmt.Errorf("input path does not exist: %s", cfg.InputPath)
+	}
 
 	webhookConfig = cfg
 
-	if webhookConfig.RemoteFileSystemUrl!=""{
-		requestClient = utils.NewRemoteClient(webhookConfig.RemoteFileSystemUrl,cfg.Authentication)
+	if webhookConfig.RemoteFileSystemUrl != "" {
+		requestClient = utils.NewRemoteClient(webhookConfig.RemoteFileSystemUrl, cfg.Authentication)
 	}
 
 	// Build the HTTP handlers (same handlers rely on webhookConfig)
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/docs/list",corsMiddleware(authMiddleware(getDocListHandler)))
+	mux.HandleFunc("/api/docs/list", corsMiddleware(authMiddleware(getDocListHandler)))
 	mux.HandleFunc("/api/docs/", corsMiddleware(corsMiddleware(docHandler)))
 	mux.HandleFunc("/api/config", corsMiddleware(authMiddleware(configHandler)))
 	mux.HandleFunc("/api/files/upload", corsMiddleware(authMiddleware(uploadFileHandler)))
@@ -104,7 +114,8 @@ func StartWebhook(cfg Config) (int, error) {
 
 	go func() {
 		log.Printf("🚀 Server starting on http://localhost:%d", actualPort)
-		log.Printf("📁 Docs path: %s", webhookConfig.DocsPath)
+		log.Printf("📁 Docs path (output): %s", webhookConfig.DocsPath)
+		log.Printf("📝 Input path (source): %s", webhookConfig.InputPath)
 		log.Printf("⚙️  Config path: %s", webhookConfig.ConfigPath)
 		log.Printf("🌐 CORS allowed origin: %s", webhookConfig.AllowOrigin)
 
@@ -129,16 +140,14 @@ func parsePort(p string) (int, error) {
 	return port, nil
 }
 
-
-
-//Authentication middleware
+// Authentication middleware
 func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgId:=w.Header().Get("X-Organization-ID")
-		sessionToken:=w.Header().Get("X-Session-Token")
-		projectId:=w.Header().Get("X-Project-ID")
+		orgId := w.Header().Get("X-Organization-ID")
+		sessionToken := w.Header().Get("X-Session-Token")
+		projectId := w.Header().Get("X-Project-ID")
 
-		if orgId == webhookConfig.Authentication.OrganizationID  && projectId == webhookConfig.Authentication.ProjectID && sessionToken == webhookConfig.Authentication.SessionToken{
+		if orgId == webhookConfig.Authentication.OrganizationID && projectId == webhookConfig.Authentication.ProjectID && sessionToken == webhookConfig.Authentication.SessionToken {
 			next(w, r)
 		}
 
@@ -183,12 +192,10 @@ func getDocListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if requestClient!=nil {
-		resp,err:=requestClient.Get("")
+	if requestClient != nil {
+		requestClient.Get("")
 		return
 	}
-
-
 
 	indexPath := filepath.Join(webhookConfig.DocsPath, "index.json")
 	data, err := os.ReadFile(indexPath)
@@ -276,35 +283,39 @@ func saveDocumentHandler(w http.ResponseWriter, r *http.Request, docId string) {
 		return
 	}
 
-	// Pretty print the JSON before saving
-	prettyJSON, err := json.MarshalIndent(contentData, "", "  ")
+	// Convert JSON to MDX using inkflow
+	mdxContent, err := inkflow.RenderJSONToMDX(req.Content, nil)
 	if err != nil {
-		http.Error(w, "Failed to format JSON", http.StatusInternalServerError)
+		log.Printf("Error converting JSON to MDX: %v", err)
+		http.Error(w, "Failed to convert JSON to MDX", http.StatusInternalServerError)
 		return
 	}
 
-	// Add .json extension if not present
-	if !strings.HasSuffix(docId, ".json") {
-		docId = docId + ".json"
+	// Remove .json extension and add .mdx if needed
+	docId = strings.TrimSuffix(docId, ".json")
+	if !strings.HasSuffix(docId, ".mdx") {
+		docId = docId + ".mdx"
 	}
 
+	// Build path to source file (InputPath)
+	mdxPath := filepath.Join(webhookConfig.InputPath, docId)
+	mdxDir := filepath.Dir(mdxPath)
+
 	// Ensure directory exists
-	docPath := filepath.Join(webhookConfig.DocsPath, docId)
-	docDir := filepath.Dir(docPath)
-	if err := os.MkdirAll(docDir, 0755); err != nil {
-		log.Printf("Error creating directory %s: %v", docDir, err)
+	if err := os.MkdirAll(mdxDir, 0755); err != nil {
+		log.Printf("Error creating directory %s: %v", mdxDir, err)
 		http.Error(w, "Failed to create directory", http.StatusInternalServerError)
 		return
 	}
 
-	// Write the file
-	if err := os.WriteFile(docPath, prettyJSON, 0644); err != nil {
-		log.Printf("Error writing document %s: %v", docId, err)
+	// Write the MDX file to InputPath
+	if err := os.WriteFile(mdxPath, []byte(mdxContent), 0644); err != nil {
+		log.Printf("Error writing MDX file %s: %v", mdxPath, err)
 		http.Error(w, "Failed to save document", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("✅ Successfully saved document: %s", docId)
+	log.Printf("✅ Successfully saved MDX document: %s", docId)
 
 	response := map[string]interface{}{
 		"success": true,
@@ -573,5 +584,3 @@ func copyFile(src, dst string) error {
 	_, err = io.Copy(destFile, sourceFile)
 	return err
 }
-
-

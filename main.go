@@ -4,6 +4,7 @@ import (
 	// Import the flag package
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/YHVCorp/gitdocai-cli/cmd"
 	"github.com/YHVCorp/gitdocai-cli/config"
@@ -14,7 +15,6 @@ import (
 func main() {
 	// Define the command-line flags and their default values
 	var serveInput, deployInput, deployOutput string
-	var webhookURL, authentication string // New variables for webhook and authentication
 
 	// ################### Root Command ###################
 	// Create the root command
@@ -26,8 +26,6 @@ func main() {
 Available commands:
 
 - dev: Starts a local server in development mode
-- preview: Preview the documentation site
-- live-editor: Start the live editor for documentation
 - init-sample: Initializes a sample project structure
 - update-themes: Downloads or updates the default themes
 - version: Displays the current version of GitDocAI CLI`,
@@ -42,41 +40,29 @@ Available commands:
 		Use:   "dev",
 		Short: "Serve the documentation locally in development mode",
 		RunE: func(command *cobra.Command, args []string) error {
-			return cmd.Serve(serveInput, webhookURL, authentication, "dev")
+			return cmd.Serve(serveInput, "dev")
 		},
 	}
 	devCmd.Flags().StringVar(&serveInput, "input", utils.GetMyPath(), "Path to the source folder containing MDX and gitdocai.config.json")
-	devCmd.Flags().StringVar(&webhookURL, "webhook_url", "", "URL to the update webhook (optional)")
-	devCmd.Flags().StringVar(&authentication, "authentication", "", "Webhook authentication method (optional)")
 	rootCmd.AddCommand(devCmd)
 
-	// #################### Preview Command ###################
-	// Create the preview command
-	previewCmd := &cobra.Command{
-		Use:   "preview",
-		Short: "Preview the documentation site",
+	// #################### Production Command ###################
+	// Create the prod command
+	prodCmd := &cobra.Command{
+		Use:   "prod",
+		Short: "Serve the documentation in production mode",
 		RunE: func(command *cobra.Command, args []string) error {
-			return cmd.Serve(serveInput, webhookURL, authentication, "preview")
+			// In prod mode, always use the flusher's docs directory
+			homeDir, err := os.UserHomeDir()
+			if err != nil {
+				return fmt.Errorf("failed to get home directory: %v", err)
+			}
+			prodInput := filepath.Join(homeDir, ".gitdocai", "docs")
+			return cmd.Serve(prodInput, "prod")
 		},
 	}
-	previewCmd.Flags().StringVar(&serveInput, "input", utils.GetMyPath(), "Path to the source folder containing MDX and gitdocai.config.json")
-	previewCmd.Flags().StringVar(&webhookURL, "webhook_url", "", "URL to the update webhook (optional)")
-	previewCmd.Flags().StringVar(&authentication, "authentication", "", "Webhook authentication method (optional)")
-	rootCmd.AddCommand(previewCmd)
-
-	// #################### Live Editor Command ###################
-	// Create the live-editor command
-	liveEditorCmd := &cobra.Command{
-		Use:   "live-editor",
-		Short: "Start the live editor for documentation",
-		RunE: func(command *cobra.Command, args []string) error {
-			return cmd.Serve(serveInput, webhookURL, authentication, "live-editor")
-		},
-	}
-	liveEditorCmd.Flags().StringVar(&serveInput, "input", utils.GetMyPath(), "Path to the source folder containing MDX and gitdocai.config.json")
-	liveEditorCmd.Flags().StringVar(&webhookURL, "webhook_url", "", "URL to the update webhook (optional)")
-	liveEditorCmd.Flags().StringVar(&authentication, "authentication", "", "Webhook authentication method (optional)")
-	rootCmd.AddCommand(liveEditorCmd)
+	// No input flag for prod - it always uses ~/.gitdocai/docs
+	rootCmd.AddCommand(prodCmd)
 
 	// ################### Deploy Command ###################
 	// Create the deploy command

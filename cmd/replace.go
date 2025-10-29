@@ -9,13 +9,9 @@ import (
 
 	"github.com/YHVCorp/gitdocai-cli/config"
 	"github.com/YHVCorp/gitdocai-cli/utils"
-	"github.com/GitDocAI/inkflow"
 )
 
 func ReplaceComponents(cnf config.Config) error {
-
-	mdxToJsonParser := inkflow.NewParser(nil)
-
 	configFile := filepath.Join(cnf.InputPath, config.ConfigFileName)
 	if !utils.CheckIfPathExist(configFile) {
 		return fmt.Errorf("%s not found in input path: %s", config.ConfigFileName, cnf.InputPath)
@@ -63,35 +59,13 @@ func ReplaceComponents(cnf config.Config) error {
 		}
 
 		if info.IsDir() {
-			if err := utils.CopyDir(srcPath, destPath,true); err != nil {
+			if err := utils.CopyDir(srcPath, destPath, true); err != nil {
 				return fmt.Errorf("error copying directory '%s': %v", srcPath, err)
 			}
 		} else {
-			// Read the MDX file
-			content, err := os.ReadFile(srcPath)
-			if err != nil {
-				return fmt.Errorf("error reading file '%s': %v", srcPath, err)
-			}
-
-			// Parse the MDX content
-			result, err := mdxToJsonParser.Parse(string(content))
-			if err != nil {
-				return fmt.Errorf("error parsing MDX content from '%s': %v", srcPath, err)
-			}
-
-			// Marshal the parsed content to JSON
-			jsonData, err := json.Marshal(result)
-			if err != nil {
-				return fmt.Errorf("error marshaling JSON from '%s': %v", srcPath, err)
-			}
-
-			// Change the file extension to .json
-			destPath = strings.Replace(destPath, filepath.Ext(destPath), ".json", 1)
-
-			// Write the JSON data to the destination file
-			err = os.WriteFile(destPath, jsonData, info.Mode())
-			if err != nil {
-				return fmt.Errorf("error writing JSON file '%s': %v", destPath, err)
+			// Use CopyFile with parsing enabled - it will only convert .mdx/.md files
+			if err := utils.CopyFile(srcPath, destPath, info.Mode(), true); err != nil {
+				return fmt.Errorf("error copying file '%s': %v", srcPath, err)
 			}
 		}
 	}
