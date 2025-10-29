@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/YHVCorp/gitdocai-cli/schemas"
+	"github.com/YHVCorp/gitdocai-cli/utils"
 )
 
 // Config holds server configuration passed to StartWebhook.
@@ -24,6 +25,7 @@ type UploadFileRequest  = schemas.UploadFileRequest
 type RenameFileRequest  = schemas.RenameFileRequest
 
 var webhookConfig Config
+var requestClient *utils.RemoteClient
 
 // StartWebhook initializes the server using the provided config, finds an available port
 // starting from cfg.Port (or 8080 if empty) and starts the HTTP server in a goroutine.
@@ -55,14 +57,18 @@ func StartWebhook(cfg Config) (int, error) {
 
 	webhookConfig = cfg
 
+	if webhookConfig.RemoteFileSystemUrl!=""{
+		requestClient = utils.NewRemoteClient(webhookConfig.RemoteFileSystemUrl,cfg.Authentication)
+	}
+
 	// Build the HTTP handlers (same handlers rely on webhookConfig)
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/docs/list", corsMiddleware(getDocListHandler))
-	mux.HandleFunc("/api/docs/", corsMiddleware(docHandler))
-	mux.HandleFunc("/api/config", corsMiddleware(configHandler))
-	mux.HandleFunc("/api/files/upload", corsMiddleware(uploadFileHandler))
-	mux.HandleFunc("/api/files/rename", corsMiddleware(renameFileHandler))
-	mux.HandleFunc("/api/health", corsMiddleware(healthHandler))
+	mux.HandleFunc("/api/docs/list",corsMiddleware(authMiddleware(getDocListHandler)))
+	mux.HandleFunc("/api/docs/", corsMiddleware(corsMiddleware(docHandler)))
+	mux.HandleFunc("/api/config", corsMiddleware(authMiddleware(configHandler)))
+	mux.HandleFunc("/api/files/upload", corsMiddleware(authMiddleware(uploadFileHandler)))
+	mux.HandleFunc("/api/files/rename", corsMiddleware(authMiddleware(renameFileHandler)))
+	mux.HandleFunc("/api/health", corsMiddleware(authMiddleware(healthHandler)))
 
 	// Port scanning: try ports starting at cfg.Port and increment until free
 	startPort, err := parsePort(cfg.Port)
@@ -124,6 +130,22 @@ func parsePort(p string) (int, error) {
 }
 
 
+
+//Authentication middleware
+func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		orgId:=w.Header().Get("X-Organization-ID")
+		sessionToken:=w.Header().Get("X-Session-Token")
+		projectId:=w.Header().Get("X-Project-ID")
+
+		if orgId == webhookConfig.Authentication.OrganizationID  && projectId == webhookConfig.Authentication.ProjectID && sessionToken == webhookConfig.Authentication.SessionToken{
+			next(w, r)
+		}
+
+		http.Error(w, "Access denied", http.StatusNotAcceptable)
+	}
+}
+
 // CORS middleware
 func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -160,6 +182,13 @@ func getDocListHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
+	if requestClient!=nil {
+		resp,err:=requestClient.Get("")
+		return
+	}
+
+
 
 	indexPath := filepath.Join(webhookConfig.DocsPath, "index.json")
 	data, err := os.ReadFile(indexPath)

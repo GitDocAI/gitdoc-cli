@@ -1,10 +1,19 @@
 package schemas
 // Config holds server configuration passed to StartWebhook.
 type Config struct {
-	Port        string `json:"port"`        // Starting port (e.g. "8080"). If empty, defaults to "8080".
-	DocsPath    string `json:"docs_path"`   // Path where JSON docs are stored
-	ConfigPath  string `json:"config_path"` // Path to the server config file
-	AllowOrigin string `json:"allow_origin"`
+	Port           		string         `json:"port"`
+	DocsPath       		string         `json:"docs_path"`
+	ConfigPath     		string         `json:"config_path"`
+	AllowOrigin    		string 		   `json:"allow_origin"`
+	RemoteFileSystemUrl string 		   `json:"remote_fielsystem_url"`
+	Authentication 		Authentication `json:"authentication"`
+}
+
+
+type Authentication struct{
+	OrganizationID string
+	SessionToken   string
+	ProjectID      string
 }
 
 // Request payloads

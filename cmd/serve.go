@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 
@@ -24,22 +25,26 @@ func Serve(serveInput, webhookURL, authentication, command string) error {
 	cnf := config.GetConfig()
 
 
-	if webhookURL == "" {
-		docs_file:=filepath.Join(cnf.OutputPath,"public")
-		webhookCfg := schemas.Config{
-			Port:        "8082",
-			AllowOrigin: "*",
-			DocsPath:    docs_file,
-			ConfigPath:  filepath.Join(docs_file,config.ConfigFileName),
-		}
-
-		port, err := StartWebhook(webhookCfg)
-		if err != nil {
-			utils.PrintError(fmt.Sprintf("Failed to start webhook server: %v", err))
-			return fmt.Errorf("failed to start webhook server: %v", err)
-		}
-		webhookURL = fmt.Sprintf("http://localhost:%d/api", port)
+	docs_file:=filepath.Join(cnf.OutputPath,"public")
+	webhookCfg := schemas.Config{
+		Port:        "8082",
+		AllowOrigin: "*",
+		DocsPath:    docs_file,
+		ConfigPath:  filepath.Join(docs_file,config.ConfigFileName),
+		RemoteFileSystemUrl: os.Getenv("FILESYSTEM_API_URL"),
+		Authentication:schemas.Authentication{
+			OrganizationID: os.Getenv("ORGANIZATION_ID"),
+			ProjectID: os.Getenv("ORGANIZATION_ID"),
+			SessionToken: os.Getenv("SESSION_TOKEN"),
+		},
 	}
+
+	port, err := StartWebhook(webhookCfg)
+	if err != nil {
+		utils.PrintError(fmt.Sprintf("Failed to start webhook server: %v", err))
+		return fmt.Errorf("failed to start webhook server: %v", err)
+	}
+	webhookURL = fmt.Sprintf("http://localhost:%d/api", port)
 
 	sourceMode := "dev"
 	if command == "preview" {
