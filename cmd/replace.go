@@ -13,14 +13,16 @@ import (
 )
 
 func ReplaceComponents(cnf config.Config) error {
-
 	mdxToJsonParser := inkflow.NewParser(nil)
 
 	configFile := filepath.Join(cnf.InputPath, config.ConfigFileName)
 	if !utils.CheckIfPathExist(configFile) {
 		return fmt.Errorf("%s not found in input path: %s", config.ConfigFileName, cnf.InputPath)
 	}
-	if err := utils.CopyFile(configFile, filepath.Join(cnf.OutputPath, config.ConfigFileName), os.FileMode(0644),false); err != nil {
+	if _,err:=utils.CreatePathIfNotExist(filepath.Join(cnf.OutputPath, "public")); err!=nil{
+		return fmt.Errorf("could not create generation file : %v ", err)
+	}
+	if err := utils.CopyFile(configFile, filepath.Join(cnf.OutputPath, "public",config.ConfigFileName), os.FileMode(0644),false); err != nil {
 		return fmt.Errorf("error copying file '%s': %v", configFile, err)
 	}
 

@@ -36,7 +36,7 @@ func StartWebhook(cfg Config) (int, error) {
 		cfg.Port = "8080"
 	}
 	if cfg.AllowOrigin == "" {
-		cfg.AllowOrigin = "http://localhost:5173"
+		cfg.AllowOrigin = "http://localhost:8080"
 	}
 
 	// Resolve absolute paths for docs and config
@@ -69,6 +69,16 @@ func StartWebhook(cfg Config) (int, error) {
 	mux.HandleFunc("/api/files/upload", corsMiddleware(authMiddleware(uploadFileHandler)))
 	mux.HandleFunc("/api/files/rename", corsMiddleware(authMiddleware(renameFileHandler)))
 	mux.HandleFunc("/api/health", corsMiddleware(authMiddleware(healthHandler)))
+
+	fileServer := http.FileServer(http.Dir(webhookConfig.BuildPath))
+	mux.HandleFunc("/", corsMiddleware(authMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		//ignore api endpoints
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+				http.NotFound(w, r)
+				return
+		}
+		fileServer.ServeHTTP(w, r)
+	})))
 
 	// Port scanning: try ports starting at cfg.Port and increment until free
 	startPort, err := parsePort(cfg.Port)
@@ -116,6 +126,9 @@ func StartWebhook(cfg Config) (int, error) {
 	return actualPort, nil
 }
 
+
+
+
 // parsePort converts a string port to int and validates range.
 func parsePort(p string) (int, error) {
 	var port int
@@ -137,6 +150,15 @@ func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		orgId:=w.Header().Get("X-Organization-ID")
 		sessionToken:=w.Header().Get("X-Session-Token")
 		projectId:=w.Header().Get("X-Project-ID")
+
+		// If all authentication fields are empty, bypass authentication (this is only for local env)
+		if webhookConfig.Authentication.OrganizationID == "" &&
+		   webhookConfig.Authentication.ProjectID == "" &&
+		   webhookConfig.Authentication.SessionToken == "" {
+			next(w, r)
+			return
+		}
+
 
 		if orgId == webhookConfig.Authentication.OrganizationID  && projectId == webhookConfig.Authentication.ProjectID && sessionToken == webhookConfig.Authentication.SessionToken{
 			next(w, r)
@@ -184,8 +206,8 @@ func getDocListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if requestClient!=nil {
-		resp,err:=requestClient.Get("")
-		return
+		// resp,err:=requestClient.Post(fmt.Sprint("docs/%s","list"))
+		// return
 	}
 
 

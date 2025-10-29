@@ -27,24 +27,24 @@ func Serve(serveInput, webhookURL, authentication, command string) error {
 
 	docs_file:=filepath.Join(cnf.OutputPath,"public")
 	webhookCfg := schemas.Config{
-		Port:        "8082",
-		AllowOrigin: "*",
-		DocsPath:    docs_file,
-		ConfigPath:  filepath.Join(docs_file,config.ConfigFileName),
+		Port:        		 "8080",
+		AllowOrigin: 		 "*",
+		BuildPath: 			 filepath.Join(cnf.OutputPath,"dist"),
+		DocsPath:    		 docs_file,
+		ConfigPath:  		 filepath.Join(docs_file,config.ConfigFileName),
 		RemoteFileSystemUrl: os.Getenv("FILESYSTEM_API_URL"),
-		Authentication:schemas.Authentication{
-			OrganizationID: os.Getenv("ORGANIZATION_ID"),
-			ProjectID: os.Getenv("ORGANIZATION_ID"),
-			SessionToken: os.Getenv("SESSION_TOKEN"),
+		Authentication:		 schemas.Authentication{
+			OrganizationID:  os.Getenv("ORGANIZATION_ID"),
+			ProjectID:       os.Getenv("ORGANIZATION_ID"),
+			SessionToken: 	 os.Getenv("SESSION_TOKEN"),
 		},
 	}
 
-	port, err := StartWebhook(webhookCfg)
+	_, err = StartWebhook(webhookCfg)
 	if err != nil {
 		utils.PrintError(fmt.Sprintf("Failed to start webhook server: %v", err))
 		return fmt.Errorf("failed to start webhook server: %v", err)
 	}
-	webhookURL = fmt.Sprintf("http://localhost:%d/api", port)
 
 	sourceMode := "dev"
 	if command == "preview" {
@@ -81,12 +81,13 @@ func Serve(serveInput, webhookURL, authentication, command string) error {
 	utils.PrintSection(fmt.Sprintf("Running npm %s", command))
 	utils.PrintDivider()
 
-	err = utils.RunBlockingWithTerminalIO("npm", cnf.OutputPath, envVars, "run", command)
+	err = utils.RunBlockingWithTerminalIO("npm", cnf.OutputPath, envVars, "run", "build")
 	if err != nil {
 		utils.PrintError(fmt.Sprintf("Failed to run npm %s: %v", command, err))
 		return fmt.Errorf("failed to run npm %s: %v", command, err)
 	}
 
+	select{}
 	return nil
 }
 
