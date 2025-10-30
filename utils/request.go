@@ -8,13 +8,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/YHVCorp/gitdocai-cli/schemas"
+	"github.com/GitDocAI/gitdocai-cli/schemas"
 )
 
 type RemoteClient struct {
-	BaseURL        string
-	AuthHeaders    map[string]string
-	httpClient     *http.Client
+	BaseURL     string
+	AuthHeaders map[string]string
+	httpClient  *http.Client
 }
 
 func NewRemoteClient(baseURL string, auth schemas.Authentication) *RemoteClient {
@@ -69,4 +69,3 @@ func ReadBody(res *http.Response) ([]byte, error) {
 	defer res.Body.Close()
 	return io.ReadAll(res.Body)
 }
-

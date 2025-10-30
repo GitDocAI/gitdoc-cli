@@ -17,7 +17,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/YHVCorp/gitdocai-cli.git"
+    "url": "https://github.com/GitDocAI/gitdocai-cli.git"
   },
   "keywords": ["cli", "gitdocai"],
   "author": "Yorjander Hernandez",

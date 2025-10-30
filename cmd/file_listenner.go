@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/YHVCorp/gitdocai-cli/config"
-	"github.com/YHVCorp/gitdocai-cli/schemas"
-	"github.com/YHVCorp/gitdocai-cli/utils"
+	"github.com/GitDocAI/gitdocai-cli/config"
+	"github.com/GitDocAI/gitdocai-cli/schemas"
+	"github.com/GitDocAI/gitdocai-cli/utils"
 	"github.com/GitDocAI/inkflow"
 	"github.com/fsnotify/fsnotify"
 )
@@ -192,7 +192,7 @@ func handleFileChange(mapping *PathMapping, filePath string, operation string) {
 		if !isPublic {
 			for _, contentPath := range mapping.ContentPaths {
 				if strings.HasPrefix(relPath, contentPath) {
-					// Map to output/content
+					// Map to output/public
 					destPath = filepath.Join(mapping.OutputPath, "public", relPath)
 					break
 				}

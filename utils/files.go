@@ -111,7 +111,8 @@ func CopyFile(src, dst string, mode os.FileMode,with_parsing bool) error {
 
 	if with_parsing && (strings.HasSuffix(src,".mdx") || strings.HasSuffix(src,".md")){
 		mdxToJsonParser := inkflow.NewParser(nil)
-		 content,err:= os.ReadFile(src)
+
+		content,err:= os.ReadFile(src)
 		if err!=nil{
 			return err
 		}

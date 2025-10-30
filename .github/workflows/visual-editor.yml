@@ -1,0 +1,46 @@
+name: Build Visual Editor Docker Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_version:
+        description: 'Docker image version (e.g., 1.0.0, v1.2.3)'
+        required: true
+        type: string
+      cli_version:
+        description: 'GitDocAI CLI version to install (default: latest)'
+        required: false
+        type: string
+        default: 'latest'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/visual-editor
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Check out code into the right branch
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: gitdocai
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Build and Push the Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/gitdocai/gitdocai/visual-editor:${{inputs.image_version}}
+          build-args: |
+            CLI_VERSION=${{ inputs.cli_version }}
+

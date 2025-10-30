@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/GitDocAI/gitdocai-cli/schemas"
+	"github.com/GitDocAI/gitdocai-cli/utils"
 	"github.com/GitDocAI/inkflow"
-	"github.com/YHVCorp/gitdocai-cli/schemas"
-	"github.com/YHVCorp/gitdocai-cli/utils"
 )
 
 // Config holds server configuration passed to StartWebhook.
@@ -80,14 +80,32 @@ func StartWebhook(cfg Config) (int, error) {
 	mux.HandleFunc("/api/files/rename", corsMiddleware(authMiddleware(renameFileHandler)))
 	mux.HandleFunc("/api/health", corsMiddleware(authMiddleware(healthHandler)))
 
-	fileServer := http.FileServer(http.Dir(webhookConfig.BuildPath))
+	// SPA handler: serve index.html for all routes except static files
 	mux.HandleFunc("/", corsMiddleware(authMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		//ignore api endpoints
+		// Ignore api endpoints
 		if strings.HasPrefix(r.URL.Path, "/api/") {
 			http.NotFound(w, r)
 			return
 		}
-		fileServer.ServeHTTP(w, r)
+
+		// Build the full file path
+		path := filepath.Join(webhookConfig.BuildPath, r.URL.Path)
+
+		// Check if the path is a file that exists
+		fileInfo, err := os.Stat(path)
+		if err == nil && !fileInfo.IsDir() {
+			// File exists, serve it
+			http.ServeFile(w, r, path)
+			return
+		}
+
+		// If it's a directory or file doesn't exist, serve index.html (SPA fallback)
+		indexPath := filepath.Join(webhookConfig.BuildPath, "index.html")
+		if _, err := os.Stat(indexPath); err == nil {
+			http.ServeFile(w, r, indexPath)
+		} else {
+			http.Error(w, "Site not built yet. Run 'npm run build' first.", http.StatusNotFound)
+		}
 	})))
 
 	// Port scanning: try ports starting at cfg.Port and increment until free
@@ -123,12 +141,6 @@ func StartWebhook(cfg Config) (int, error) {
 	}
 
 	go func() {
-		log.Printf("🚀 Server starting on http://localhost:%d", actualPort)
-		log.Printf("📁 Docs path (output): %s", webhookConfig.DocsPath)
-		log.Printf("📝 Input path (source): %s", webhookConfig.InputPath)
-		log.Printf("⚙️  Config path: %s", webhookConfig.ConfigPath)
-		log.Printf("🌐 CORS allowed origin: %s", webhookConfig.AllowOrigin)
-
 		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
 			log.Printf("Server failed: %v", err)
 		}
@@ -150,18 +162,32 @@ func parsePort(p string) (int, error) {
 	return port, nil
 }
 
-// Authentication middleware
+// Authentication middleware - only validates in production mode
 func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgId := w.Header().Get("X-Organization-ID")
-		sessionToken := w.Header().Get("X-Session-Token")
-		projectId := w.Header().Get("X-Project-ID")
-
-		if orgId == webhookConfig.Authentication.OrganizationID && projectId == webhookConfig.Authentication.ProjectID && sessionToken == webhookConfig.Authentication.SessionToken {
+		// Skip auth in dev and preview modes
+		if webhookConfig.Mode != "prod" {
 			next(w, r)
+			return
 		}
 
-		http.Error(w, "Access denied", http.StatusNotAcceptable)
+		// Only validate auth in production mode
+		orgId := r.Header.Get("X-Organization-ID")
+		sessionToken := r.Header.Get("X-Session-Token")
+		projectId := r.Header.Get("X-Project-ID")
+
+		// Check if all auth values are provided and match
+		if webhookConfig.Authentication.OrganizationID != "" &&
+			webhookConfig.Authentication.ProjectID != "" &&
+			webhookConfig.Authentication.SessionToken != "" &&
+			orgId == webhookConfig.Authentication.OrganizationID &&
+			projectId == webhookConfig.Authentication.ProjectID &&
+			sessionToken == webhookConfig.Authentication.SessionToken {
+			next(w, r)
+			return
+		}
+
+		http.Error(w, "Access denied", http.StatusUnauthorized)
 	}
 }
 
@@ -296,8 +322,9 @@ func saveDocumentHandler(w http.ResponseWriter, r *http.Request, docId string) {
 	// Convert JSON to MDX using inkflow
 	mdxContent, err := inkflow.RenderJSONToMDX(req.Content, nil)
 	if err != nil {
-		log.Printf("Error converting JSON to MDX: %v", err)
-		http.Error(w, "Failed to convert JSON to MDX", http.StatusInternalServerError)
+		log.Printf("❌ Error converting JSON to MDX: %v", err)
+		log.Printf("📄 Full JSON that failed: %s", req.Content)
+		http.Error(w, fmt.Sprintf("Failed to convert JSON to MDX: %v", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -324,8 +351,6 @@ func saveDocumentHandler(w http.ResponseWriter, r *http.Request, docId string) {
 		http.Error(w, "Failed to save document", http.StatusInternalServerError)
 		return
 	}
-
-	log.Printf("✅ Successfully saved MDX document: %s", docId)
 
 	response := map[string]interface{}{
 		"success": true,
@@ -558,8 +583,6 @@ func renameFileHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to rename file", http.StatusInternalServerError)
 		return
 	}
-
-	log.Printf("✅ Successfully renamed file: %s -> %s", oldPath, newPath)
 
 	response := map[string]interface{}{
 		"success":  true,

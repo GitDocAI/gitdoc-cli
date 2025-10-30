@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/YHVCorp/gitdocai-cli/config"
-	"github.com/YHVCorp/gitdocai-cli/utils"
+	"github.com/GitDocAI/gitdocai-cli/config"
+	"github.com/GitDocAI/gitdocai-cli/utils"
 )
 
 func ReplaceComponents(cnf config.Config) error {
@@ -50,6 +50,7 @@ func ReplaceComponents(cnf config.Config) error {
 	}
 
 	for _, path := range contentPaths {
+		fmt.Printf("Processing content path: %s\n", path)
 		srcPath := filepath.Join(cnf.InputPath, path)
 		destPath := filepath.Join(cnf.OutputPath, "public", path)
 

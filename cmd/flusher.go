@@ -14,17 +14,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/YHVCorp/gitdocai-cli/utils"
+	"github.com/GitDocAI/gitdocai-cli/utils"
 )
 
 // FlusherConfig holds configuration for the flusher service
 type FlusherConfig struct {
-	OrganizationID    string
-	SessionToken      string
-	ProjectID         string
-	FilesystemAPIURL  string
-	FlushInterval     time.Duration
-	LocalDocsPath     string
+	OrganizationID   string
+	SessionToken     string
+	ProjectID        string
+	FilesystemAPIURL string
+	FlushInterval    time.Duration
+	LocalDocsPath    string
 }
 
 // FileState represents the state of a file for change detection

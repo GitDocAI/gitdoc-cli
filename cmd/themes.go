@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/YHVCorp/gitdocai-cli/config"
-	"github.com/YHVCorp/gitdocai-cli/utils"
+	"github.com/GitDocAI/gitdocai-cli/config"
+	"github.com/GitDocAI/gitdocai-cli/utils"
 )
 
 func cleanAndCloneThemesRepo() error {
@@ -90,7 +90,7 @@ func CopyTheme(targetDir string, themeName string) error {
 			return os.MkdirAll(destPath, info.Mode())
 		}
 
-		return utils.CopyFile(path, destPath, info.Mode(),false)
+		return utils.CopyFile(path, destPath, info.Mode(), false)
 	})
 
 	if err != nil {

@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/YHVCorp/gitdocai-cli/config"
-	"github.com/YHVCorp/gitdocai-cli/utils"
+	"github.com/GitDocAI/gitdocai-cli/config"
+	"github.com/GitDocAI/gitdocai-cli/utils"
 )
 
 func InitSample(themeName string) error {
@@ -56,7 +56,7 @@ func copyThemeToCurrentPath(themeDir, targetDir string) error {
 		if err != nil {
 			return fmt.Errorf("error accessing config file: %w", err)
 		}
-		if err := utils.CopyFile(configFile, destConfig, info.Mode(),false); err != nil {
+		if err := utils.CopyFile(configFile, destConfig, info.Mode(), false); err != nil {
 			return fmt.Errorf("error copying config file: %w", err)
 		}
 	}
@@ -96,11 +96,11 @@ func copyDirectoryContents(sourceDir, targetDir string) error {
 		}
 
 		if entry.IsDir() {
-			if err := utils.CopyDir(srcPath, destPath,false); err != nil {
+			if err := utils.CopyDir(srcPath, destPath, false); err != nil {
 				return fmt.Errorf("error copying directory %s: %w", srcPath, err)
 			}
 		} else {
-			if err := utils.CopyFile(srcPath, destPath, info.Mode(),false); err != nil {
+			if err := utils.CopyFile(srcPath, destPath, info.Mode(), false); err != nil {
 				return fmt.Errorf("error copying file %s: %w", srcPath, err)
 			}
 		}

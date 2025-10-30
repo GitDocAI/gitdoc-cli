@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/YHVCorp/gitdocai-cli/schemas"
+	"github.com/GitDocAI/gitdocai-cli/schemas"
 )
 
 // CreateFileWithApiReference creates an MDX file (and its directories) at the given path
