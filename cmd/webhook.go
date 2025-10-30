@@ -178,6 +178,13 @@ func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
+		// Skip auth for static assets (CSS, JS, images, fonts, etc.)
+		path := r.URL.Path
+		if isStaticAsset(path) {
+			next(w, r)
+			return
+		}
+
 		// Read token from URL query parameter
 		tokenParam := r.URL.Query().Get("token")
 		if tokenParam == "" {
@@ -212,6 +219,24 @@ func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 
 		http.Error(w, "Access denied", http.StatusUnauthorized)
 	}
+}
+
+// isStaticAsset checks if the path is a static asset that doesn't require authentication
+func isStaticAsset(path string) bool {
+	// Allow assets directory
+	if strings.HasPrefix(path, "/assets/") {
+		return true
+	}
+
+	// Allow common static file extensions
+	staticExtensions := []string{".js", ".css", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".woff", ".woff2", ".ttf", ".eot", ".map"}
+	for _, ext := range staticExtensions {
+		if strings.HasSuffix(path, ext) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // CORS middleware
