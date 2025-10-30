@@ -26,13 +26,6 @@ type SaveContentRequest = schemas.SaveContentRequest
 type UploadFileRequest = schemas.UploadFileRequest
 type RenameFileRequest = schemas.RenameFileRequest
 
-// TokenPayload holds authentication information passed via URL token parameter
-type TokenPayload struct {
-	OrganizationID string `json:"organization_id"`
-	ProjectID      string `json:"project_id"`
-	SessionToken   string `json:"session_token"`
-}
-
 var webhookConfig Config
 var requestClient *utils.RemoteClient
 
@@ -80,15 +73,15 @@ func StartWebhook(cfg Config) (int, error) {
 
 	// Build the HTTP handlers (same handlers rely on webhookConfig)
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/docs/list", corsMiddleware(authMiddleware(getDocListHandler)))
-	mux.HandleFunc("/api/docs/", corsMiddleware(authMiddleware(docHandler)))
-	mux.HandleFunc("/api/config", corsMiddleware(authMiddleware(configHandler)))
-	mux.HandleFunc("/api/files/upload", corsMiddleware(authMiddleware(uploadFileHandler)))
-	mux.HandleFunc("/api/files/rename", corsMiddleware(authMiddleware(renameFileHandler)))
-	mux.HandleFunc("/api/health", corsMiddleware(authMiddleware(healthHandler)))
+	mux.HandleFunc("/api/docs/list", corsMiddleware(getDocListHandler))
+	mux.HandleFunc("/api/docs/", corsMiddleware(docHandler))
+	mux.HandleFunc("/api/config", corsMiddleware(configHandler))
+	mux.HandleFunc("/api/files/upload", corsMiddleware(uploadFileHandler))
+	mux.HandleFunc("/api/files/rename", corsMiddleware(renameFileHandler))
+	mux.HandleFunc("/api/health", corsMiddleware(healthHandler))
 
 	// SPA handler: serve index.html for all routes except static files
-	mux.HandleFunc("/", corsMiddleware(authMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		// Ignore api endpoints
 		if strings.HasPrefix(r.URL.Path, "/api/") {
 			http.NotFound(w, r)
@@ -113,7 +106,7 @@ func StartWebhook(cfg Config) (int, error) {
 		} else {
 			http.Error(w, "Site not built yet. Run 'npm run build' first.", http.StatusNotFound)
 		}
-	})))
+	}))
 
 	// Port scanning: try ports starting at cfg.Port and increment until free
 	startPort, err := parsePort(cfg.Port)
@@ -167,76 +160,6 @@ func parsePort(p string) (int, error) {
 		return 0, fmt.Errorf("port out of range")
 	}
 	return port, nil
-}
-
-// Authentication middleware - only validates in production mode
-func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// Skip auth in dev and preview modes
-		if webhookConfig.Mode != "prod" {
-			next(w, r)
-			return
-		}
-
-		// Skip auth for static assets (CSS, JS, images, fonts, etc.)
-		path := r.URL.Path
-		if isStaticAsset(path) {
-			next(w, r)
-			return
-		}
-
-		// Read token from URL query parameter
-		tokenParam := r.URL.Query().Get("token")
-		if tokenParam == "" {
-			http.Error(w, "Missing token parameter", http.StatusUnauthorized)
-			return
-		}
-
-		// Decode base64 token
-		decodedBytes, err := base64.URLEncoding.DecodeString(tokenParam)
-		if err != nil {
-			http.Error(w, "Invalid token format", http.StatusUnauthorized)
-			return
-		}
-
-		// Unmarshal JSON payload
-		var payload TokenPayload
-		if err := json.Unmarshal(decodedBytes, &payload); err != nil {
-			http.Error(w, "Invalid token payload", http.StatusUnauthorized)
-			return
-		}
-
-		// Validate auth values match configuration
-		if webhookConfig.Authentication.OrganizationID != "" &&
-			webhookConfig.Authentication.ProjectID != "" &&
-			webhookConfig.Authentication.SessionToken != "" &&
-			payload.OrganizationID == webhookConfig.Authentication.OrganizationID &&
-			payload.ProjectID == webhookConfig.Authentication.ProjectID &&
-			payload.SessionToken == webhookConfig.Authentication.SessionToken {
-			next(w, r)
-			return
-		}
-
-		http.Error(w, "Access denied", http.StatusUnauthorized)
-	}
-}
-
-// isStaticAsset checks if the path is a static asset that doesn't require authentication
-func isStaticAsset(path string) bool {
-	// Allow assets directory
-	if strings.HasPrefix(path, "/assets/") {
-		return true
-	}
-
-	// Allow common static file extensions
-	staticExtensions := []string{".js", ".css", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".woff", ".woff2", ".ttf", ".eot", ".map"}
-	for _, ext := range staticExtensions {
-		if strings.HasSuffix(path, ext) {
-			return true
-		}
-	}
-
-	return false
 }
 
 // CORS middleware
