@@ -1,17 +1,9 @@
 name: Build Visual Editor Docker Image
 
 on:
-  workflow_dispatch:
-    inputs:
-      image_version:
-        description: 'Docker image version (e.g., 1.0.0, v1.2.3)'
-        required: true
-        type: string
-      cli_version:
-        description: 'GitDocAI CLI version to install (default: latest)'
-        required: false
-        type: string
-        default: 'latest'
+  push:
+    tags:
+      - 'v*'
 
 env:
   REGISTRY: ghcr.io
@@ -40,7 +32,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/gitdocai/gitdocai/visual-editor:${{inputs.image_version}}
+          tags: ghcr.io/gitdocai/gitdocai/visual-editor:${{ github.ref_name }}
           build-args: |
-            CLI_VERSION=${{ inputs.cli_version }}
+            CLI_VERSION=${{ github.ref_name }}
 
