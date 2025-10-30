@@ -1,9 +1,10 @@
 name: Build Visual Editor Docker Image
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_run:
+    workflows: ["Release GitDocAI CLI"]
+    types:
+      - completed
 
 env:
   REGISTRY: ghcr.io
@@ -12,6 +13,7 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: read
       packages: write
@@ -19,6 +21,12 @@ jobs:
     steps:
       - name: Check out code into the right branch
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+
+      - name: Extract tag name
+        id: tag
+        run: echo "TAG_NAME=${{ github.event.workflow_run.head_branch }}" >> $GITHUB_OUTPUT
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -32,7 +40,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/gitdocai/gitdocai/visual-editor:${{ github.ref_name }}
+          tags: ghcr.io/gitdocai/gitdocai/visual-editor:${{ steps.tag.outputs.TAG_NAME }}
           build-args: |
-            CLI_VERSION=${{ github.ref_name }}
+            CLI_VERSION=${{ steps.tag.outputs.TAG_NAME }}
 
