@@ -94,8 +94,8 @@ func NewFlusher() (*Flusher, error) {
 		return nil, fmt.Errorf("missing required environment variables: ORGANIZATION_ID, SESSION_TOKEN, PROJECT_ID, FILESYSTEM_API_URL")
 	}
 
-	// Parse flush interval (default to 5 minutes)
-	flushInterval := 5 * time.Minute
+	// Parse flush interval (default to 1 minute)
+	flushInterval := 1 * time.Minute
 	if flushIntervalStr != "" {
 		duration, err := time.ParseDuration(flushIntervalStr)
 		if err == nil {
@@ -166,10 +166,14 @@ func (f *Flusher) periodicFlush() {
 	for {
 		select {
 		case <-ticker.C:
+			utils.PrintDivider()
+			utils.PrintInfo(fmt.Sprintf("Starting periodic flush at %s", time.Now().Format("15:04:05")))
 			if err := f.flush(); err != nil {
 				utils.PrintError(fmt.Sprintf("Flush error: %v", err))
 			}
+			utils.PrintDivider()
 		case <-f.stopChan:
+			utils.PrintInfo("Stopping flusher service...")
 			return
 		}
 	}
@@ -185,9 +189,12 @@ func (f *Flusher) flush() error {
 	}
 
 	if len(changes.New) == 0 && len(changes.Modified) == 0 && len(changes.Deleted) == 0 {
-		utils.PrintInfo("No changes detected")
+		utils.PrintInfo("No changes detected - skipping flush")
 		return nil
 	}
+
+	utils.PrintInfo(fmt.Sprintf("Changes detected: %d new, %d modified, %d deleted",
+		len(changes.New), len(changes.Modified), len(changes.Deleted)))
 
 	// Upload new files
 	for _, path := range changes.New {

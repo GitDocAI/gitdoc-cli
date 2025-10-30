@@ -81,7 +81,7 @@ func Serve(serveInput, command string) error {
 	if command == "preview" {
 		sourceMode = "production"
 	} else if command == "prod" {
-		sourceMode = "production"
+		sourceMode = "preview"
 	}
 
 	envVars := map[string]any{
