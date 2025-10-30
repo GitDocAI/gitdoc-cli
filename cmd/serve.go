@@ -58,24 +58,16 @@ func Serve(serveInput, command string) error {
 		}
 	}
 
-	webhookCfg := schemas.Config{
-		Port:                "8082",
-		AllowOrigin:         "*",
-		BuildPath:           build_path,
-		DocsPath:            docs_file,
-		InputPath:           cnf.InputPath,
-		ConfigPath:          filepath.Join(docs_file, config.ConfigFileName),
-		RemoteFileSystemUrl: os.Getenv("FILESYSTEM_API_URL"),
-		Authentication:      auth,
-		Mode:                command, // "dev", "preview", or "prod"
+	// Determine port: use PORT env var in prod (for Cloud Run), otherwise default to 8080
+	port := "8082"
+	if command == "prod" {
+		if envPort := os.Getenv("PORT"); envPort != "" {
+			port = envPort
+		}
 	}
 
-	actualPort, err := StartWebhook(webhookCfg)
-	if err != nil {
-		utils.PrintError(fmt.Sprintf("Failed to start webhook server: %v", err))
-		return fmt.Errorf("failed to start webhook server: %v", err)
-	}
-	webhookURL := fmt.Sprintf("http://localhost:%d/api", actualPort)
+	// Prepare webhook URL for Vite env vars (server will start after build)
+	webhookURL := fmt.Sprintf("http://localhost:%s/api", port)
 
 	sourceMode := "dev"
 	if command == "preview" {
@@ -117,6 +109,28 @@ func Serve(serveInput, command string) error {
 	if err != nil {
 		utils.PrintError(fmt.Sprintf("Failed to run npm %s: %v", command, err))
 		return fmt.Errorf("failed to run npm %s: %v", command, err)
+	}
+
+	utils.PrintDivider()
+	utils.PrintStep("Starting webhook server...")
+
+	// Now that build is complete, start the webhook server
+	webhookCfg := schemas.Config{
+		Port:                port,
+		AllowOrigin:         "*",
+		BuildPath:           build_path,
+		DocsPath:            docs_file,
+		InputPath:           cnf.InputPath,
+		ConfigPath:          filepath.Join(docs_file, config.ConfigFileName),
+		RemoteFileSystemUrl: os.Getenv("FILESYSTEM_API_URL"),
+		Authentication:      auth,
+		Mode:                command, // "dev", "preview", or "prod"
+	}
+
+	actualPort, err := StartWebhook(webhookCfg)
+	if err != nil {
+		utils.PrintError(fmt.Sprintf("Failed to start webhook server: %v", err))
+		return fmt.Errorf("failed to start webhook server: %v", err)
 	}
 
 	utils.PrintDivider()
