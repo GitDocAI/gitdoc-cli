@@ -26,6 +26,13 @@ type SaveContentRequest = schemas.SaveContentRequest
 type UploadFileRequest = schemas.UploadFileRequest
 type RenameFileRequest = schemas.RenameFileRequest
 
+// TokenPayload holds authentication information passed via URL token parameter
+type TokenPayload struct {
+	OrganizationID string `json:"organization_id"`
+	ProjectID      string `json:"project_id"`
+	SessionToken   string `json:"session_token"`
+}
+
 var webhookConfig Config
 var requestClient *utils.RemoteClient
 
@@ -171,18 +178,34 @@ func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		// Only validate auth in production mode
-		orgId := r.Header.Get("X-Organization-ID")
-		sessionToken := r.Header.Get("X-Session-Token")
-		projectId := r.Header.Get("X-Project-ID")
+		// Read token from URL query parameter
+		tokenParam := r.URL.Query().Get("token")
+		if tokenParam == "" {
+			http.Error(w, "Missing token parameter", http.StatusUnauthorized)
+			return
+		}
 
-		// Check if all auth values are provided and match
+		// Decode base64 token
+		decodedBytes, err := base64.URLEncoding.DecodeString(tokenParam)
+		if err != nil {
+			http.Error(w, "Invalid token format", http.StatusUnauthorized)
+			return
+		}
+
+		// Unmarshal JSON payload
+		var payload TokenPayload
+		if err := json.Unmarshal(decodedBytes, &payload); err != nil {
+			http.Error(w, "Invalid token payload", http.StatusUnauthorized)
+			return
+		}
+
+		// Validate auth values match configuration
 		if webhookConfig.Authentication.OrganizationID != "" &&
 			webhookConfig.Authentication.ProjectID != "" &&
 			webhookConfig.Authentication.SessionToken != "" &&
-			orgId == webhookConfig.Authentication.OrganizationID &&
-			projectId == webhookConfig.Authentication.ProjectID &&
-			sessionToken == webhookConfig.Authentication.SessionToken {
+			payload.OrganizationID == webhookConfig.Authentication.OrganizationID &&
+			payload.ProjectID == webhookConfig.Authentication.ProjectID &&
+			payload.SessionToken == webhookConfig.Authentication.SessionToken {
 			next(w, r)
 			return
 		}
