@@ -12,7 +12,7 @@ env:
   REGISTRY: us-central1-docker.pkg.dev
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   GAR_LOCATION: us-central1
-  REPOSITORY: gitdocai
+  REPOSITORY: gitdocai-repo
   IMAGE_NAME: visual-editor
 
 jobs:
