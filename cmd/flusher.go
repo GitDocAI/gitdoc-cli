@@ -364,7 +364,7 @@ func (f *Flusher) downloadAllFiles() error {
 	// List all files from root directory
 	reqBody := listDirectoryRequest{
 		Path:       "/",
-		Branch:     "main",
+		Branch:     "",
 		Extensions: []string{}, // Get all file types
 	}
 
@@ -427,7 +427,7 @@ func (f *Flusher) uploadFile(relativePath string) error {
 func (f *Flusher) deleteFile(relativePath string) error {
 	reqBody := deleteEntryRequest{
 		Path:   relativePath,
-		Branch: "main",
+		Branch: "",
 	}
 
 	var resp genericHTTPResponse
