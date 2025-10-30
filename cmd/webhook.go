@@ -74,7 +74,7 @@ func StartWebhook(cfg Config) (int, error) {
 	// Build the HTTP handlers (same handlers rely on webhookConfig)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/docs/list", corsMiddleware(authMiddleware(getDocListHandler)))
-	mux.HandleFunc("/api/docs/", corsMiddleware(corsMiddleware(docHandler)))
+	mux.HandleFunc("/api/docs/", corsMiddleware(authMiddleware(docHandler)))
 	mux.HandleFunc("/api/config", corsMiddleware(authMiddleware(configHandler)))
 	mux.HandleFunc("/api/files/upload", corsMiddleware(authMiddleware(uploadFileHandler)))
 	mux.HandleFunc("/api/files/rename", corsMiddleware(authMiddleware(renameFileHandler)))
@@ -196,7 +196,8 @@ func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", webhookConfig.AllowOrigin)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+		w.Header().Set("Access-Control-Max-Age", "86400") // 24 hours
 
 		// Handle preflight requests
 		if r.Method == "OPTIONS" {

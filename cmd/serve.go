@@ -66,14 +66,21 @@ func Serve(serveInput, command string) error {
 		}
 	}
 
-	// Prepare webhook URL for Vite env vars (server will start after build)
-	webhookURL := fmt.Sprintf("http://localhost:%s/api", port)
-
 	sourceMode := "dev"
 	if command == "preview" {
 		sourceMode = "production"
 	} else if command == "prod" {
 		sourceMode = "preview"
+	}
+
+	// Prepare webhook URL for Vite env vars
+	// In prod/preview, use relative path since frontend and backend are on same domain
+	// In dev, use localhost URL
+	var webhookURL string
+	if command == "dev" {
+		webhookURL = fmt.Sprintf("http://localhost:%s/api", port)
+	} else {
+		webhookURL = "/api" // Relative path for production
 	}
 
 	envVars := map[string]any{
