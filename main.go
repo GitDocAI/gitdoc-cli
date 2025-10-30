@@ -57,11 +57,11 @@ Available commands:
 			if err != nil {
 				return fmt.Errorf("failed to get home directory: %v", err)
 			}
-			prodInput := filepath.Join(homeDir, ".gitdocai", "docs")
+			prodInput := filepath.Join(homeDir, ".gitdocai", "docsrc")
 			return cmd.Serve(prodInput, "prod")
 		},
 	}
-	// No input flag for prod - it always uses ~/.gitdocai/docs
+	// No input flag for prod - it always uses ~/.gitdocai/docsrc
 	rootCmd.AddCommand(prodCmd)
 
 	// ################### Deploy Command ###################

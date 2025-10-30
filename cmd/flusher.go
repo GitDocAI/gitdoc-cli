@@ -62,6 +62,11 @@ type deleteEntryRequest struct {
 	Branch string `json:"branch"`
 }
 
+type getFileRequest struct {
+	Path   string `json:"path"`
+	Branch string `json:"branch"`
+}
+
 type genericHTTPResponse struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
@@ -103,7 +108,7 @@ func NewFlusher() (*Flusher, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get home directory: %v", err)
 	}
-	localDocsPath := filepath.Join(homeDir, ".gitdocai", "docs")
+	localDocsPath := filepath.Join(homeDir, ".gitdocai", "docsrc")
 
 	return &Flusher{
 		config: FlusherConfig{
@@ -361,9 +366,9 @@ func (f *Flusher) hashFile(filePath string) (string, error) {
 func (f *Flusher) downloadAllFiles() error {
 	utils.PrintStep("Downloading files from remote filesystem...")
 
-	// List all files from root directory
+	// List all files from docsrc directory
 	reqBody := listDirectoryRequest{
-		Path:       "/",
+		Path:       "/docsrc",
 		Branch:     "",
 		Extensions: []string{}, // Get all file types
 	}
@@ -376,16 +381,43 @@ func (f *Flusher) downloadAllFiles() error {
 	// Download and save each file
 	for _, entry := range listResp.Entries {
 		if entry.Type == "FILE" {
-			destPath := filepath.Join(f.config.LocalDocsPath, entry.Path)
+			// Fetch the file content using the /file endpoint
+			// Ensure the path has /docsrc prefix
+			filePath := entry.Path
+			if !strings.HasPrefix(filePath, "/docsrc/") && !strings.HasPrefix(filePath, "docsrc/") {
+				filePath = "/docsrc/" + strings.TrimPrefix(filePath, "/")
+			}
+			fileReq := getFileRequest{
+				Path:   filePath,
+				Branch: "",
+			}
+
+			var fileResp fileEntry
+			if err := f.doRequest("POST", "/file", fileReq, &fileResp); err != nil {
+				utils.PrintError(fmt.Sprintf("Failed to fetch file %s: %v", entry.Path, err))
+				continue
+			}
+
+			// Extract the path after 'docsrc/' since we're already storing in .gitdocai/docsrc
+			// The API returns the full server path like: gitdocai-data/organization/.../docsrc/file.txt
+			// We only want the part after 'docsrc/'
+			cleanPath := fileResp.Path
+			if idx := strings.Index(cleanPath, "docsrc/"); idx != -1 {
+				cleanPath = cleanPath[idx+len("docsrc/"):]
+			} else if idx := strings.Index(cleanPath, "docsrc\\"); idx != -1 {
+				// Handle Windows path separator
+				cleanPath = cleanPath[idx+len("docsrc\\"):]
+			}
+			destPath := filepath.Join(f.config.LocalDocsPath, cleanPath)
 
 			// Create parent directory if needed
 			if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
-				return fmt.Errorf("failed to create directory for %s: %v", entry.Path, err)
+				return fmt.Errorf("failed to create directory for %s: %v", cleanPath, err)
 			}
 
 			// Write file content
-			if err := os.WriteFile(destPath, []byte(entry.Content), 0644); err != nil {
-				return fmt.Errorf("failed to write file %s: %v", entry.Path, err)
+			if err := os.WriteFile(destPath, []byte(fileResp.Content), 0644); err != nil {
+				return fmt.Errorf("failed to write file %s: %v", cleanPath, err)
 			}
 		}
 	}
@@ -404,9 +436,11 @@ func (f *Flusher) uploadFile(relativePath string) error {
 		return fmt.Errorf("failed to read file: %v", err)
 	}
 
-	// Prepare request
+	// Prepare request - prepend /docsrc to the path
+	// Normalize path separators to forward slashes for the API
+	apiPath := filepath.ToSlash(relativePath)
 	reqBody := upsertEntryRequest{
-		Path:    relativePath,
+		Path:    "/docsrc/" + apiPath,
 		Type:    "FILE",
 		Content: string(content),
 	}
@@ -425,8 +459,10 @@ func (f *Flusher) uploadFile(relativePath string) error {
 
 // deleteFile deletes a file from remote filesystem
 func (f *Flusher) deleteFile(relativePath string) error {
+	// Normalize path separators to forward slashes for the API
+	apiPath := filepath.ToSlash(relativePath)
 	reqBody := deleteEntryRequest{
-		Path:   relativePath,
+		Path:   "/docsrc/" + apiPath,
 		Branch: "",
 	}
 
