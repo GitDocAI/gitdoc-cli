@@ -1,14 +1,35 @@
 package schemas
-
-
-type ReplaceRequest struct {
-	FilePath   string `json:"file_path"`
-	NewText    string `json:"new_text"`
-	IsMultipart bool   `json:"is_multipart"`
+// Config holds server configuration passed to StartWebhook.
+type Config struct {
+	Port           		string         `json:"port"`
+	BuildPath			string 		   `json:"build_path"`
+	DocsPath       		string         `json:"docs_path"`
+	InputPath      		string         `json:"input_path"`
+	ConfigPath     		string         `json:"config_path"`
+	AllowOrigin    		string 		   `json:"allow_origin"`
+	RemoteFileSystemUrl string 		   `json:"remote_fielsystem_url"`
+	Authentication 		Authentication `json:"authentication"`
+	Mode				string		   `json:"mode"` // "dev", "preview", or "prod"
 }
 
-type ReplaceResponse struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
-	Error   string `json:"error,omitempty"`
+
+type Authentication struct{
+	OrganizationID string
+	SessionToken   string
+	ProjectID      string
+}
+
+// Request payloads
+type SaveContentRequest struct {
+	Content string `json:"content"`
+}
+
+type UploadFileRequest struct {
+	FilePath string `json:"file_path"` // Relative path where to save the file
+	FileData string `json:"file_data"` // Base64 encoded file data
+}
+
+type RenameFileRequest struct {
+	OldPath string `json:"old_path"`
+	NewPath string `json:"new_path"`
 }

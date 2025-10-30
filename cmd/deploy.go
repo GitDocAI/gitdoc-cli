@@ -3,8 +3,8 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/YHVCorp/gitdocai-cli/config"
-	"github.com/YHVCorp/gitdocai-cli/utils"
+	"github.com/GitDocAI/gitdocai-cli/config"
+	"github.com/GitDocAI/gitdocai-cli/utils"
 )
 
 func Deploy(deployInput, deployOutput string, showSpinner bool) error {

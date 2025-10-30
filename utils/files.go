@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/GitDocAI/inkflow"
 )
 
 func GetMyPath() string {
@@ -105,7 +107,39 @@ func ShouldExclude(name string, excludeFilters []string) bool {
 	return matchesAnyFilter(name, excludeFilters)
 }
 
-func CopyFile(src, dst string, mode os.FileMode) error {
+func CopyFile(src, dst string, mode os.FileMode,with_parsing bool) error {
+
+	if with_parsing && (strings.HasSuffix(src,".mdx") || strings.HasSuffix(src,".md")){
+		mdxToJsonParser := inkflow.NewParser(nil)
+
+		content,err:= os.ReadFile(src)
+		if err!=nil{
+			return err
+		}
+
+		result, err := mdxToJsonParser.Parse(string(content))
+		if err != nil {
+			return fmt.Errorf("error parsing MDX content from '%s': %v", src, err)
+		}
+
+		// Marshal the parsed content to JSON
+		jsonData, err := json.Marshal(result)
+		if err != nil {
+			return fmt.Errorf("error marshaling JSON from '%s': %v", src, err)
+		}
+
+		// Change the file extension to .json
+		destPath := strings.Replace(dst, filepath.Ext(dst), ".json", 1)
+
+		// Write the JSON data to the destination file
+		err = os.WriteFile(destPath, jsonData, mode)
+		if err != nil {
+			return fmt.Errorf("error writing JSON file '%s': %v", destPath, err)
+		}
+
+		return nil
+	}
+
 	sourceFile, err := os.Open(src)
 	if err != nil {
 		return err
@@ -122,7 +156,7 @@ func CopyFile(src, dst string, mode os.FileMode) error {
 	return err
 }
 
-func CopyDir(src string, dst string) error {
+func CopyDir(src string, dst string,with_parsing bool) error {
 	entries, err := os.ReadDir(src)
 	if err != nil {
 		return err
@@ -142,11 +176,11 @@ func CopyDir(src string, dst string) error {
 		}
 
 		if entry.IsDir() {
-			if err := CopyDir(srcPath, dstPath); err != nil {
+			if err := CopyDir(srcPath, dstPath,with_parsing); err != nil {
 				return err
 			}
 		} else {
-			if err := CopyFile(srcPath, dstPath, info.Mode()); err != nil {
+			if err := CopyFile(srcPath, dstPath, info.Mode(),with_parsing); err != nil {
 				return err
 			}
 		}

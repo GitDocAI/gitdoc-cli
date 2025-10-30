@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/YHVCorp/gitdocai-cli/schemas"
-	"github.com/YHVCorp/gitdocai-cli/utils"
+	"github.com/GitDocAI/gitdocai-cli/schemas"
+	"github.com/GitDocAI/gitdocai-cli/utils"
 )
 
 type Config struct {

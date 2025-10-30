@@ -160,7 +160,7 @@ func filterOutput(reader io.Reader, writer io.Writer, stopSpinner chan bool, spi
 	}
 }
 
-func RunBlockingWithTerminalIO(command string, dir string, custom_envs map[string]string, args ...string) error {
+func RunBlockingWithTerminalIO(command string, dir string, custom_envs map[string]any, args ...string) error {
 	cmd := exec.Command(command, args...)
 	cmd.Dir = dir
 	cmd.Stdin = os.Stdin
@@ -197,47 +197,15 @@ func RunBlockingWithTerminalIO(command string, dir string, custom_envs map[strin
 		return err
 	}
 
-	// Create channels
-	stopSpinner := make(chan bool, 1)
-	spinnerControl := make(chan string, 10)
-	clearLine := make(chan bool, 10)
-
 	// Track if browser has been opened
 	browserOpened := false
 
-	// Start spinner
-	s := NewSpinner("Compiling project...")
-	s.Start()
-
-	// Handle spinner control
-	go func() {
-		for {
-			select {
-			case <-stopSpinner:
-				s.Stop()
-				fmt.Print("\r\033[K") // Clear the line completely
-				return
-			case <-clearLine:
-				fmt.Print("\r\033[K") // Clear the line before output
-			case cmd := <-spinnerControl:
-				if cmd == "pause" {
-					s.Stop()
-				} else if cmd == "resume" {
-					s.Start()
-				}
-			}
-		}
-	}()
-
-	// Filter output in separate goroutines
-	go filterOutput(stdoutPipe, os.Stdout, stopSpinner, spinnerControl, clearLine, &browserOpened)
+	// Filter output in separate goroutines (no spinner)
+	go filterOutput(stdoutPipe, os.Stdout, nil, nil, nil, &browserOpened)
 	go filterOutput(stderrPipe, os.Stderr, nil, nil, nil, nil)
 
 	// Wait for command to finish
 	err = cmd.Wait()
-
-	// Ensure spinner is stopped
-	s.Stop()
 
 	signal.Stop(sigs)
 	close(sigs)

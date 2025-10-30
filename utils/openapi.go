@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/YHVCorp/gitdocai-cli/schemas"
+	"github.com/GitDocAI/gitdocai-cli/schemas"
 	"github.com/getkin/kin-openapi/openapi3"
 )
 

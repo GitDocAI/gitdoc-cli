@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/YHVCorp/gitdocai-cli/schemas"
+	"github.com/GitDocAI/gitdocai-cli/schemas"
 )
 
 func ExtractUsedPaths(config schemas.SiteConfig) ([]string, []string) {
