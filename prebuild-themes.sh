@@ -41,9 +41,17 @@ fi
 # Create prebuild output directory
 mkdir -p "$PREBUILD_OUTPUT"
 
-# Get list of themes (directories in themes repo, excluding hidden and non-theme dirs)
+# Get list of themes from themes.json
 cd "$THEMES_DIR"
-THEMES=$(find . -maxdepth 1 -type d ! -name "." ! -name ".git" ! -name ".*" -exec basename {} \;)
+
+# Check if themes.json exists
+if [ ! -f "themes.json" ]; then
+    echo "❌ Error: themes.json not found in themes repository"
+    exit 1
+fi
+
+# Parse themes.json to get theme names
+THEMES=$(cat themes.json | grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4)
 
 echo "📋 Found themes: $THEMES"
 
@@ -60,6 +68,11 @@ for THEME in $THEMES; do
     # Copy theme directly to output (skip deploy, just copy theme files)
     # Exclude node_modules, dist, build artifacts, and git files
     echo "  📁 Copying theme files..."
+    echo "  📂 Source: $THEMES_DIR/$THEME/"
+    echo "  📂 Destination: $THEME_WORKSPACE/output/"
+    echo "  📋 Files in source:"
+    ls -la "$THEMES_DIR/$THEME/" || echo "Source directory doesn't exist!"
+
     rsync -a \
         --exclude='node_modules' \
         --exclude='dist' \
@@ -72,9 +85,19 @@ for THEME in $THEMES; do
         --exclude='gitdocai.config.json' \
         "$THEMES_DIR/$THEME/" "$THEME_WORKSPACE/output/"
 
+    echo "  📋 Files copied to destination:"
+    ls -la "$THEME_WORKSPACE/output/" || echo "Destination directory is empty!"
+
     # Run npm install and build
     echo "  📦 Installing dependencies..."
     cd "$THEME_WORKSPACE/output"
+
+    # Check if package.json exists
+    if [ ! -f "package.json" ]; then
+        echo "  ⚠️  No package.json found, skipping npm install and build for $THEME"
+        continue
+    fi
+
     npm install --force
 
     echo "  🏗️  Building theme..."
