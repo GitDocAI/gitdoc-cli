@@ -75,7 +75,7 @@ for THEME in $THEMES; do
     # Run npm install and build
     echo "  📦 Installing dependencies..."
     cd "$THEME_WORKSPACE/output"
-    npm install --force --silent
+    npm install --force
 
     echo "  🏗️  Building theme..."
     # Set environment variables for preview mode build
@@ -84,7 +84,7 @@ for THEME in $THEMES; do
     export VITE_BACKEND_URL=/api
     export VITE_USE_BACKEND=false
     export VITE_SOURCE=/docs
-    npm run build --silent
+    npm run build
 
     # Copy built files to prebuild directory
     echo "  💾 Saving prebuild..."
