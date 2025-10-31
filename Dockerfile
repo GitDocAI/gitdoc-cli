@@ -5,7 +5,7 @@ ARG CLI_VERSION=latest
 
 # Install system dependencies
 RUN apt-get update && \
-    apt-get install -y curl ca-certificates git && \
+    apt-get install -y curl ca-certificates git rsync && \
     update-ca-certificates && \
     curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y nodejs && \
