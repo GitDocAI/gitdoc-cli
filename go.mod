@@ -3,7 +3,6 @@ module github.com/GitDocAI/gitdocai-cli
 go 1.23.5
 
 require (
-	github.com/GitDocAI/inkflow v0.1.1
 	github.com/briandowns/spinner v1.23.2
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be
 	github.com/fatih/color v1.18.0

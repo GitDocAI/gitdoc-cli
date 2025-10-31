@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/GitDocAI/gitdocai-cli/inkflow"
 	"github.com/GitDocAI/gitdocai-cli/schemas"
 	"github.com/GitDocAI/gitdocai-cli/utils"
-	"github.com/GitDocAI/inkflow"
 )
 
 // Config holds server configuration passed to StartWebhook.
@@ -89,7 +89,13 @@ func StartWebhook(cfg Config) (int, error) {
 		}
 
 		// Build the full file path
-		path := filepath.Join(webhookConfig.BuildPath, r.URL.Path)
+		var path string
+		// Serve gitdocai.config.json from ConfigPath (where it's actually saved)
+		if r.URL.Path == "/gitdocai.config.json" {
+			path = webhookConfig.ConfigPath
+		} else {
+			path = filepath.Join(webhookConfig.BuildPath, r.URL.Path)
+		}
 
 		// Check if the path is a file that exists
 		fileInfo, err := os.Stat(path)
@@ -380,21 +386,54 @@ func saveConfigHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Ensure directory exists
-	configDir := filepath.Dir(webhookConfig.ConfigPath)
-	if err := os.MkdirAll(configDir, 0755); err != nil {
-		log.Printf("Error creating config directory %s: %v", configDir, err)
-		http.Error(w, "Failed to create directory", http.StatusInternalServerError)
-		return
-	}
+	// Determine where to save based on mode
+	if webhookConfig.Mode == "prod" {
+		// In prod mode, save to BOTH locations:
+		// 1. InputPath - so flusher can sync it to filesystem API
+		inputConfigPath := filepath.Join(webhookConfig.InputPath, "gitdocai.config.json")
+		inputConfigDir := filepath.Dir(inputConfigPath)
+		if err := os.MkdirAll(inputConfigDir, 0755); err != nil {
+			log.Printf("Error creating config directory %s: %v", inputConfigDir, err)
+			http.Error(w, "Failed to create directory", http.StatusInternalServerError)
+			return
+		}
+		if err := os.WriteFile(inputConfigPath, prettyJSON, 0644); err != nil {
+			log.Printf("Error writing config to %s: %v", inputConfigPath, err)
+			http.Error(w, "Failed to save configuration", http.StatusInternalServerError)
+			return
+		}
+		log.Printf("✅ Saved configuration to InputPath: %s", inputConfigPath)
 
-	if err := os.WriteFile(webhookConfig.ConfigPath, prettyJSON, 0644); err != nil {
-		log.Printf("Error writing config: %v", err)
-		http.Error(w, "Failed to save configuration", http.StatusInternalServerError)
-		return
+		// 2. OutputPath/public - so GET requests immediately see the new config
+		outputConfigPath := webhookConfig.ConfigPath
+		outputConfigDir := filepath.Dir(outputConfigPath)
+		if err := os.MkdirAll(outputConfigDir, 0755); err != nil {
+			log.Printf("Error creating config directory %s: %v", outputConfigDir, err)
+			http.Error(w, "Failed to create directory", http.StatusInternalServerError)
+			return
+		}
+		if err := os.WriteFile(outputConfigPath, prettyJSON, 0644); err != nil {
+			log.Printf("Error writing config to %s: %v", outputConfigPath, err)
+			http.Error(w, "Failed to save configuration", http.StatusInternalServerError)
+			return
+		}
+		log.Printf("✅ Saved configuration to OutputPath: %s", outputConfigPath)
+	} else {
+		// In dev/preview mode, save only to ConfigPath (output/public)
+		savePath := webhookConfig.ConfigPath
+		configDir := filepath.Dir(savePath)
+		if err := os.MkdirAll(configDir, 0755); err != nil {
+			log.Printf("Error creating config directory %s: %v", configDir, err)
+			http.Error(w, "Failed to create directory", http.StatusInternalServerError)
+			return
+		}
+		if err := os.WriteFile(savePath, prettyJSON, 0644); err != nil {
+			log.Printf("Error writing config to %s: %v", savePath, err)
+			http.Error(w, "Failed to save configuration", http.StatusInternalServerError)
+			return
+		}
+		log.Printf("✅ Successfully saved configuration to %s", savePath)
 	}
-
-	log.Printf("✅ Successfully saved configuration")
 
 	response := map[string]interface{}{
 		"success": true,

@@ -102,5 +102,59 @@ func ReplaceComponents(cnf config.Config) error {
 		}
 	}
 
+	// Copy any remaining files/folders from InputPath that weren't in publicPaths or contentPaths
+	// This handles assets, images, and other files that come from the filesystem API
+	processedPaths := make(map[string]bool)
+	for _, path := range publicPaths {
+		processedPaths[path] = true
+	}
+	for _, path := range contentPaths {
+		processedPaths[path] = true
+	}
+
+	entries, err := os.ReadDir(cnf.InputPath)
+	if err != nil {
+		return fmt.Errorf("error reading input directory: %v", err)
+	}
+
+	for _, entry := range entries {
+		name := entry.Name()
+
+		// Skip gitdocai.config.json (already copied)
+		if name == config.ConfigFileName {
+			continue
+		}
+
+		// Skip if already processed
+		if processedPaths[name] {
+			continue
+		}
+
+		srcPath := filepath.Join(cnf.InputPath, name)
+		destPath := filepath.Join(cnf.OutputPath, "public", name)
+
+		info, err := entry.Info()
+		if err != nil {
+			fmt.Printf("Warning: Could not get info for '%s': %v\n", name, err)
+			continue
+		}
+
+		if info.IsDir() {
+			// Copy directory without parsing (don't convert MDX files)
+			if err := utils.CopyDir(srcPath, destPath, false); err != nil {
+				fmt.Printf("Warning: Could not copy directory '%s': %v\n", name, err)
+			} else {
+				fmt.Printf("Copied additional directory: %s\n", name)
+			}
+		} else {
+			// Copy file without parsing
+			if err := utils.CopyFile(srcPath, destPath, info.Mode(), false); err != nil {
+				fmt.Printf("Warning: Could not copy file '%s': %v\n", name, err)
+			} else {
+				fmt.Printf("Copied additional file: %s\n", name)
+			}
+		}
+	}
+
 	return nil
 }

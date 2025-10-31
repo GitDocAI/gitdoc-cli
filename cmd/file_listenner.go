@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/GitDocAI/gitdocai-cli/config"
+	"github.com/GitDocAI/gitdocai-cli/inkflow"
 	"github.com/GitDocAI/gitdocai-cli/schemas"
 	"github.com/GitDocAI/gitdocai-cli/utils"
-	"github.com/GitDocAI/inkflow"
 	"github.com/fsnotify/fsnotify"
 )
 
@@ -159,7 +159,7 @@ func handleFileChange(mapping *PathMapping, filePath string, operation string) {
 
 	// Check if it's the config file
 	if filePath == mapping.ConfigFile {
-		destPath = filepath.Join(mapping.OutputPath, config.ConfigFileName)
+		destPath = filepath.Join(mapping.OutputPath, "public", config.ConfigFileName)
 		//ignore if there was an error
 		if newConfig, err := getConfigFileJson(mapping.ConfigFile); err == nil {
 			if hasChangedNavigation(mapping.SiteConfig, *newConfig) {
@@ -172,6 +172,12 @@ func handleFileChange(mapping *PathMapping, filePath string, operation string) {
 				ReplaceComponents(config)
 				return
 			}
+			// Navigation didn't change, but config was modified - copy it
+			mapping.SiteConfig = *newConfig
+			if err := utils.CopyFile(filePath, destPath, os.FileMode(0644), false); err != nil {
+				fmt.Printf("error copying config file %s to %s: %v\n", filePath, destPath, err)
+			}
+			return
 		} else {
 			return
 		}
@@ -197,6 +203,12 @@ func handleFileChange(mapping *PathMapping, filePath string, operation string) {
 					break
 				}
 			}
+		}
+
+		// If not in any specific path, still copy it to output/public
+		// This handles files like assets/, images/, etc. that come from the filesystem API
+		if destPath == "" {
+			destPath = filepath.Join(mapping.OutputPath, "public", relPath)
 		}
 	}
 

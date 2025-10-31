@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/GitDocAI/inkflow"
+	"github.com/GitDocAI/gitdocai-cli/inkflow"
 )
 
 func GetMyPath() string {
@@ -107,13 +107,20 @@ func ShouldExclude(name string, excludeFilters []string) bool {
 	return matchesAnyFilter(name, excludeFilters)
 }
 
-func CopyFile(src, dst string, mode os.FileMode,with_parsing bool) error {
+func CopyFile(src, dst string, mode os.FileMode, with_parsing bool) error {
+	// Skip gitdocai.config.json only during recursive copy operations (with_parsing=true)
+	// Allow explicit copies when with_parsing=false
+	baseName := filepath.Base(src)
+	if baseName == "gitdocai.config.json" && with_parsing {
+		// Skip during recursive operations - it should only be copied explicitly
+		return nil
+	}
 
-	if with_parsing && (strings.HasSuffix(src,".mdx") || strings.HasSuffix(src,".md")){
+	if with_parsing && (strings.HasSuffix(src, ".mdx") || strings.HasSuffix(src, ".md")) {
 		mdxToJsonParser := inkflow.NewParser(nil)
 
-		content,err:= os.ReadFile(src)
-		if err!=nil{
+		content, err := os.ReadFile(src)
+		if err != nil {
 			return err
 		}
 
@@ -156,7 +163,7 @@ func CopyFile(src, dst string, mode os.FileMode,with_parsing bool) error {
 	return err
 }
 
-func CopyDir(src string, dst string,with_parsing bool) error {
+func CopyDir(src string, dst string, with_parsing bool) error {
 	entries, err := os.ReadDir(src)
 	if err != nil {
 		return err
@@ -176,11 +183,11 @@ func CopyDir(src string, dst string,with_parsing bool) error {
 		}
 
 		if entry.IsDir() {
-			if err := CopyDir(srcPath, dstPath,with_parsing); err != nil {
+			if err := CopyDir(srcPath, dstPath, with_parsing); err != nil {
 				return err
 			}
 		} else {
-			if err := CopyFile(srcPath, dstPath, info.Mode(),with_parsing); err != nil {
+			if err := CopyFile(srcPath, dstPath, info.Mode(), with_parsing); err != nil {
 				return err
 			}
 		}
