@@ -17,8 +17,8 @@ func Serve(serveInput, command string) error {
 	utils.PrintBanner()
 	utils.PrintHeader(fmt.Sprintf("Starting %s mode", command))
 
-	// Start flusher service for production mode
-	if command == "prod" {
+	// Start flusher service for preview mode (Cloud)
+	if command == "preview" {
 		flusher, err := StartFlusher()
 		if err != nil {
 			utils.PrintError(fmt.Sprintf("Failed to start flusher service: %v", err))
@@ -48,9 +48,9 @@ func Serve(serveInput, command string) error {
 	docs_file := filepath.Join(cnf.OutputPath, "public")
 	build_path := filepath.Join(cnf.OutputPath, "dist") // Vite builds to dist/ by default
 
-	// Configure authentication only for production mode
+	// Configure authentication only for preview mode (Cloud)
 	var auth schemas.Authentication
-	if command == "prod" {
+	if command == "preview" {
 		auth = schemas.Authentication{
 			OrganizationID: os.Getenv("ORGANIZATION_ID"),
 			ProjectID:      os.Getenv("PROJECT_ID"),
@@ -58,9 +58,9 @@ func Serve(serveInput, command string) error {
 		}
 	}
 
-	// Determine port: use PORT env var in prod (for Cloud Run), otherwise default to 8080
+	// Determine port: use PORT env var in preview (for Cloud Run), otherwise default to 8082
 	port := "8082"
-	if command == "prod" {
+	if command == "preview" {
 		if envPort := os.Getenv("PORT"); envPort != "" {
 			port = envPort
 		}
@@ -69,18 +69,16 @@ func Serve(serveInput, command string) error {
 	sourceMode := "dev"
 	if command == "preview" {
 		sourceMode = "production"
-	} else if command == "prod" {
-		sourceMode = "preview"
 	}
 
 	// Prepare webhook URL for Vite env vars
-	// In prod/preview, use relative path since frontend and backend are on same domain
+	// In preview (Cloud), use relative path since frontend and backend are on same domain
 	// In dev, use localhost URL
 	var webhookURL string
 	if command == "dev" {
 		webhookURL = fmt.Sprintf("http://localhost:%s/api", port)
 	} else {
-		webhookURL = "/api" // Relative path for production
+		webhookURL = "/api" // Relative path for preview (Cloud)
 	}
 
 	envVars := map[string]any{
@@ -131,7 +129,7 @@ func Serve(serveInput, command string) error {
 		ConfigPath:          filepath.Join(docs_file, config.ConfigFileName),
 		RemoteFileSystemUrl: os.Getenv("FILESYSTEM_API_URL"),
 		Authentication:      auth,
-		Mode:                command, // "dev", "preview", or "prod"
+		Mode:                command, // "dev" or "preview"
 	}
 
 	actualPort, err := StartWebhook(webhookCfg)

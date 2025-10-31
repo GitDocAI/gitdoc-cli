@@ -46,23 +46,24 @@ Available commands:
 	devCmd.Flags().StringVar(&serveInput, "input", utils.GetMyPath(), "Path to the source folder containing MDX and gitdocai.config.json")
 	rootCmd.AddCommand(devCmd)
 
-	// #################### Production Command ###################
-	// Create the prod command
-	prodCmd := &cobra.Command{
-		Use:   "prod",
-		Short: "Serve the documentation in production mode",
+	// #################### Preview Command (Hidden - Cloud) ###################
+	// Create the preview command
+	previewCmd := &cobra.Command{
+		Use:   "preview",
+		Short: "Serve the documentation in production mode (Cloud)",
+		Hidden: true,
 		RunE: func(command *cobra.Command, args []string) error {
-			// In prod mode, always use the flusher's docs directory
+			// In preview mode, always use the flusher's docs directory
 			homeDir, err := os.UserHomeDir()
 			if err != nil {
 				return fmt.Errorf("failed to get home directory: %v", err)
 			}
-			prodInput := filepath.Join(homeDir, ".gitdocai", "docsrc")
-			return cmd.Serve(prodInput, "prod")
+			previewInput := filepath.Join(homeDir, ".gitdocai", "docsrc")
+			return cmd.Serve(previewInput, "preview")
 		},
 	}
-	// No input flag for prod - it always uses ~/.gitdocai/docsrc
-	rootCmd.AddCommand(prodCmd)
+	// No input flag for preview - it always uses ~/.gitdocai/docsrc
+	rootCmd.AddCommand(previewCmd)
 
 	// ################### Deploy Command ###################
 	// Create the deploy command

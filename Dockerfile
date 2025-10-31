@@ -25,5 +25,5 @@ EXPOSE 8080
 # Set working directory
 WORKDIR /workspace
 
-# Run gitdocai in production mode
-ENTRYPOINT ["gitdocai-cli", "prod"]
+# Run gitdocai in preview mode (Cloud)
+ENTRYPOINT ["gitdocai-cli", "preview"]

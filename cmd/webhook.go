@@ -387,8 +387,8 @@ func saveConfigHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Determine where to save based on mode
-	if webhookConfig.Mode == "prod" {
-		// In prod mode, save to BOTH locations:
+	if webhookConfig.Mode == "preview" {
+		// In preview mode (Cloud), save to BOTH locations:
 		// 1. InputPath - so flusher can sync it to filesystem API
 		inputConfigPath := filepath.Join(webhookConfig.InputPath, "gitdocai.config.json")
 		inputConfigDir := filepath.Dir(inputConfigPath)
@@ -419,7 +419,7 @@ func saveConfigHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Printf("✅ Saved configuration to OutputPath: %s", outputConfigPath)
 	} else {
-		// In dev/preview mode, save only to ConfigPath (output/public)
+		// In dev mode, save only to ConfigPath (output/public)
 		savePath := webhookConfig.ConfigPath
 		configDir := filepath.Dir(savePath)
 		if err := os.MkdirAll(configDir, 0755); err != nil {

@@ -9,7 +9,7 @@ type Config struct {
 	AllowOrigin    		string 		   `json:"allow_origin"`
 	RemoteFileSystemUrl string 		   `json:"remote_fielsystem_url"`
 	Authentication 		Authentication `json:"authentication"`
-	Mode				string		   `json:"mode"` // "dev", "preview", or "prod"
+	Mode				string		   `json:"mode"` // "dev" or "preview"
 }
 
 
