@@ -150,7 +150,7 @@ func (p *Parser) parseMarkdownElement(lines []string, start int) (*Node, int, er
 
 	// HTML Image tag
 	if strings.HasPrefix(trimmed, "<img") {
-		return p.parseHTMLImage(line)
+		return p.parseHTMLImage(lines, start)
 	}
 
 	// Default: paragraph
@@ -896,22 +896,39 @@ func (p *Parser) attributesToStringMap(attrs map[string]interface{}) map[string]
 }
 
 // parseHTMLImage parses an HTML <img> tag into an imageBlock
-func (p *Parser) parseHTMLImage(line string) (*Node, int, error) {
-	trimmed := strings.TrimSpace(line)
+// Handles both single-line and multi-line img tags
+func (p *Parser) parseHTMLImage(lines []string, start int) (*Node, int, error) {
+	// Collect all lines that are part of the img tag
+	var imgLines []string
+	i := start
+
+	for i < len(lines) {
+		line := strings.TrimSpace(lines[i])
+		imgLines = append(imgLines, line)
+		i++
+
+		// Check if this line closes the tag
+		if strings.Contains(line, "/>") || strings.Contains(line, ">") {
+			break
+		}
+	}
+
+	// Combine all lines into a single string
+	fullTag := strings.Join(imgLines, " ")
 
 	// Extract src attribute
 	srcPattern := regexp.MustCompile(`src="([^"]*)"`)
-	srcMatch := srcPattern.FindStringSubmatch(trimmed)
+	srcMatch := srcPattern.FindStringSubmatch(fullTag)
 	if len(srcMatch) < 2 {
 		// No src found, treat as text
-		return p.parseParagraph([]string{line}, 0)
+		return p.parseParagraph([]string{fullTag}, 0)
 	}
 	src := srcMatch[1]
 
 	// Extract alt attribute
 	alt := ""
 	altPattern := regexp.MustCompile(`alt="([^"]*)"`)
-	altMatch := altPattern.FindStringSubmatch(trimmed)
+	altMatch := altPattern.FindStringSubmatch(fullTag)
 	if len(altMatch) >= 2 {
 		alt = altMatch[1]
 	}
@@ -944,5 +961,5 @@ func (p *Parser) parseHTMLImage(line string) (*Node, int, error) {
 			"caption": "",
 			"type":    imageType,
 		},
-	}, 1, nil
+	}, i - start, nil
 }

@@ -99,9 +99,29 @@ func Serve(serveInput, command string) error {
 		"VITE_SOURCE":      "/docs",
 	}
 
+	// Copy assets from public/ to dist/ so they're accessible via the web server
+	// Do this for both preview and dev modes, but at different times
+	copyAssets := func() error {
+		assetsPublicPath := filepath.Join(docs_file, "assets")
+		assetsDistPath := filepath.Join(build_path, "assets")
+		if utils.CheckIfPathExist(assetsPublicPath) {
+			utils.PrintStep("Copying assets to build directory...")
+			if err := utils.CopyDir(assetsPublicPath, assetsDistPath, false); err != nil {
+				return fmt.Errorf("failed to copy assets: %v", err)
+			}
+			utils.PrintSuccess("Assets copied to build directory")
+		}
+		return nil
+	}
+
 	// In preview mode, skip npm install and build (already done in prebuild)
 	if command == "preview" {
 		utils.PrintSuccess("Using prebuilt dependencies and assets")
+		// Copy assets for preview mode
+		if err := copyAssets(); err != nil {
+			utils.PrintError(fmt.Sprintf("Failed to copy assets: %v", err))
+			return err
+		}
 	} else {
 		// Dev mode: install dependencies and build
 		err = utils.RunWithSpinner("Installing dependencies...", func() error {
@@ -125,6 +145,12 @@ func Serve(serveInput, command string) error {
 		if err != nil {
 			utils.PrintError(fmt.Sprintf("Failed to run npm %s: %v", command, err))
 			return fmt.Errorf("failed to run npm %s: %v", command, err)
+		}
+
+		// Copy assets for dev mode after build
+		if err := copyAssets(); err != nil {
+			utils.PrintError(fmt.Sprintf("Failed to copy assets: %v", err))
+			return err
 		}
 	}
 

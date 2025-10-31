@@ -242,6 +242,17 @@ func handleFileChange(mapping *PathMapping, filePath string, operation string) {
 			if err := utils.CopyFile(filePath, destPath, os.FileMode(0644), false); err != nil {
 				fmt.Printf("error copying file %s to %s: %v\n", filePath, destPath, err)
 			}
+
+			// If it's an asset file, also copy to dist/assets for web serving
+			if strings.HasPrefix(relPath, "assets/") || strings.HasPrefix(relPath, "public/assets/") {
+				distPath := filepath.Join(mapping.OutputPath, "dist", strings.TrimPrefix(relPath, "public/"))
+				distDir := filepath.Dir(distPath)
+				if err := os.MkdirAll(distDir, 0755); err != nil {
+					fmt.Printf("error creating dist directory %s: %v\n", distDir, err)
+				} else if err := utils.CopyFile(filePath, distPath, os.FileMode(0644), false); err != nil {
+					fmt.Printf("error copying asset to dist %s: %v\n", distPath, err)
+				}
+			}
 		}
 	case "remove":
 		// For MDX files, remove the .json file instead
@@ -254,6 +265,14 @@ func handleFileChange(mapping *PathMapping, filePath string, operation string) {
 		if err := os.RemoveAll(removeDestPath); err != nil && !os.IsNotExist(err) {
 			fmt.Printf("error removing file %s: %v\n", removeDestPath, err)
 		}
+
+		// If it's an asset file, also remove from dist/assets
+		if strings.HasPrefix(relPath, "assets/") || strings.HasPrefix(relPath, "public/assets/") {
+			distPath := filepath.Join(mapping.OutputPath, "dist", strings.TrimPrefix(relPath, "public/"))
+			if err := os.RemoveAll(distPath); err != nil && !os.IsNotExist(err) {
+				fmt.Printf("error removing asset from dist %s: %v\n", distPath, err)
+			}
+		}
 	case "rename":
 		// For rename, we remove the old file (new file will trigger create event)
 		removeDestPath := destPath
@@ -263,6 +282,14 @@ func handleFileChange(mapping *PathMapping, filePath string, operation string) {
 
 		if err := os.RemoveAll(removeDestPath); err != nil && !os.IsNotExist(err) {
 			fmt.Printf("error removing renamed file %s: %v\n", removeDestPath, err)
+		}
+
+		// If it's an asset file, also remove from dist/assets
+		if strings.HasPrefix(relPath, "assets/") || strings.HasPrefix(relPath, "public/assets/") {
+			distPath := filepath.Join(mapping.OutputPath, "dist", strings.TrimPrefix(relPath, "public/"))
+			if err := os.RemoveAll(distPath); err != nil && !os.IsNotExist(err) {
+				fmt.Printf("error removing renamed asset from dist %s: %v\n", distPath, err)
+			}
 		}
 	}
 }
