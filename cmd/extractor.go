@@ -78,7 +78,7 @@ func ExtractApirefPaths(config schemas.SiteConfig) map[string]schemas.Item {
 	apirefSet := make(map[string]schemas.Item)
 
 	extractAndAddPath := func(path string, item schemas.Item) {
-		new_path := path + fmt.Sprintf("/%s.mdx", cleanPath(item.Title))
+		new_path := strings.ReplaceAll(path,".mdx",".json")
 		apirefSet[new_path] = item
 	}
 
@@ -86,7 +86,7 @@ func ExtractApirefPaths(config schemas.SiteConfig) map[string]schemas.Item {
 	extractApirefsFromItems = func(path string, items []schemas.Item) {
 		for i := range items {
 			if items[i].Type == "openapi" || items[i].Type == "swagger" {
-				extractAndAddPath(path, items[i])
+				extractAndAddPath(items[i].Page, items[i])
 			}
 			if len(items[i].Children) > 0 {
 				next_path := path + fmt.Sprintf("/%s", cleanPath(items[i].Title))

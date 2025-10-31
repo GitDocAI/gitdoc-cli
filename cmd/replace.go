@@ -1,11 +1,9 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/GitDocAI/gitdocai-cli/config"
 	"github.com/GitDocAI/gitdocai-cli/utils"
@@ -81,21 +79,19 @@ func ReplaceComponents(cnf config.Config) error {
 		}
 
 		openapi_path := filepath.Join(cnf.InputPath, item.Path)
+		output_openapi_path:= filepath.Join(cnf.OutputPath,"public", item.Path)
+		if _, err := os.Stat(output_openapi_path); err==nil {
+			//remove output openapi file to avoid errors
+			os.Remove(output_openapi_path)
+		}
+
 		apiref, err := utils.ExtractRequestInfoFromOpenapi(item.Title, openapi_path, item.Method, item.Reference)
 		if err != nil {
 			fmt.Printf("Warning: Api Reference path '%s' does not exist, skipping.\n", item.Path)
 			continue //ignore file if theres not apiref
 		}
-
-		jsonData, err := json.Marshal(apiref)
-		if err != nil {
-			return fmt.Errorf("error marshaling JSON from '%s': %v", path, err)
-		}
-
 		destPath := filepath.Join(cnf.OutputPath, "public", path)
-		destPath = strings.Replace(destPath, filepath.Ext(destPath), ".json", 1)
-
-		err = os.WriteFile(destPath, jsonData, os.FileMode(0644))
+		err = utils.CreateFileWithApiReference(*apiref, destPath)
 		if err != nil {
 			fmt.Printf("Warning: Api Reference path '%s' does not exist, skipping.\n", item.Reference)
 			return fmt.Errorf("error creating apireference file: '%s' : %v", destPath, err)
