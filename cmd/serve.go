@@ -28,18 +28,29 @@ func Serve(serveInput, command string) error {
 		utils.PrintDivider()
 	}
 
-	utils.PrintStep("Checking for theme updates...")
-	err := DownloadThemes(true)
-	if err != nil {
-		utils.PrintError(fmt.Sprintf("Failed to update themes: %v", err))
-		return fmt.Errorf("failed to update themes: %v", err)
-	}
-	utils.PrintDivider()
+	// In preview mode, use prebuilt themes. In dev mode, use normal flow
+	var err error
+	if command == "preview" {
+		utils.PrintStep("Using prebuilt themes...")
+		err = DeployPrebuilt(serveInput, "")
+		if err != nil {
+			utils.PrintError(fmt.Sprintf("Failed to deploy prebuilt theme: %v", err))
+			return fmt.Errorf("failed to deploy prebuilt theme: %v", err)
+		}
+	} else {
+		utils.PrintStep("Checking for theme updates...")
+		err = DownloadThemes(true)
+		if err != nil {
+			utils.PrintError(fmt.Sprintf("Failed to update themes: %v", err))
+			return fmt.Errorf("failed to update themes: %v", err)
+		}
+		utils.PrintDivider()
 
-	err = Deploy(serveInput, "", true)
-	if err != nil {
-		utils.PrintError(fmt.Sprintf("Failed to deploy: %v", err))
-		return fmt.Errorf("failed to deploy: %v", err)
+		err = Deploy(serveInput, "", true)
+		if err != nil {
+			utils.PrintError(fmt.Sprintf("Failed to deploy: %v", err))
+			return fmt.Errorf("failed to deploy: %v", err)
+		}
 	}
 
 	// Obtener configuración global del proyecto
@@ -88,33 +99,39 @@ func Serve(serveInput, command string) error {
 		"VITE_SOURCE":      "/docs",
 	}
 
-	err = utils.RunWithSpinner("Installing dependencies...", func() error {
-		errStr, isError := utils.ExecuteCmd("npm", cnf.OutputPath, "install", "--force")
-		if isError {
-			return fmt.Errorf("%v", errStr)
+	// In preview mode, skip npm install and build (already done in prebuild)
+	if command == "preview" {
+		utils.PrintSuccess("Using prebuilt dependencies and assets")
+	} else {
+		// Dev mode: install dependencies and build
+		err = utils.RunWithSpinner("Installing dependencies...", func() error {
+			errStr, isError := utils.ExecuteCmd("npm", cnf.OutputPath, "install", "--force")
+			if isError {
+				return fmt.Errorf("%v", errStr)
+			}
+			return nil
+		})
+		if err != nil {
+			utils.PrintError(fmt.Sprintf("Failed to install dependencies: %v", err))
+			return fmt.Errorf("failed to execute npm install: %v", err)
 		}
-		return nil
-	})
-	if err != nil {
-		utils.PrintError(fmt.Sprintf("Failed to install dependencies: %v", err))
-		return fmt.Errorf("failed to execute npm install: %v", err)
+		utils.PrintSuccess("Dependencies installed")
+
+		utils.PrintDivider()
+		utils.PrintSection(fmt.Sprintf("Running npm %s", command))
+		utils.PrintDivider()
+
+		err = utils.RunBlockingWithTerminalIO("npm", cnf.OutputPath, envVars, "run", "build")
+		if err != nil {
+			utils.PrintError(fmt.Sprintf("Failed to run npm %s: %v", command, err))
+			return fmt.Errorf("failed to run npm %s: %v", command, err)
+		}
 	}
-	utils.PrintSuccess("Dependencies installed")
 
 	go func() {
 		InitFolderListen(*cnf)
 	}()
 	utils.PrintSuccess("File watcher started")
-
-	utils.PrintDivider()
-	utils.PrintSection(fmt.Sprintf("Running npm %s", command))
-	utils.PrintDivider()
-
-	err = utils.RunBlockingWithTerminalIO("npm", cnf.OutputPath, envVars, "run", "build")
-	if err != nil {
-		utils.PrintError(fmt.Sprintf("Failed to run npm %s: %v", command, err))
-		return fmt.Errorf("failed to run npm %s: %v", command, err)
-	}
 
 	utils.PrintDivider()
 	utils.PrintStep("Starting webhook server...")

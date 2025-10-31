@@ -19,6 +19,13 @@ RUN if [ "$CLI_VERSION" = "latest" ]; then \
         npm install -g gitdocai-cli@${CLI_VERSION}; \
     fi
 
+# Copy prebuild script
+COPY prebuild-themes.sh /tmp/prebuild-themes.sh
+RUN chmod +x /tmp/prebuild-themes.sh
+
+# Prebuild all themes (this happens at build time, not runtime)
+RUN /tmp/prebuild-themes.sh && rm /tmp/prebuild-themes.sh
+
 # Expose webhook port
 EXPOSE 8080
 
