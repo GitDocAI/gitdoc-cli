@@ -18,16 +18,27 @@ func (r *Renderer) Render(doc *Document) (string, error) {
 	var builder strings.Builder
 
 	for i, node := range doc.Content {
-		mdx, err := r.renderNode(&node, 0)
-		if err != nil {
-			return "", err
+		// Check if this is an empty paragraph
+		isEmptyParagraph := node.Type == "paragraph" && len(node.Content) == 0
+
+		if !isEmptyParagraph {
+			// Normal node - render it
+			mdx, err := r.renderNode(&node, 0)
+			if err != nil {
+				return "", err
+			}
+			builder.WriteString(mdx)
 		}
 
-		builder.WriteString(mdx)
-
-		// Add spacing between blocks (except for last element)
+		// Add spacing after this node (except for last element)
 		if i < len(doc.Content)-1 {
-			builder.WriteString("\n\n")
+			if isEmptyParagraph {
+				// Empty paragraph contributes one extra newline
+				builder.WriteString("\n")
+			} else {
+				// Normal spacing between paragraphs
+				builder.WriteString("\n\n")
+			}
 		}
 	}
 
@@ -82,6 +93,11 @@ func (r *Renderer) renderHeading(node *Node) (string, error) {
 
 // renderParagraph renders a paragraph node
 func (r *Renderer) renderParagraph(node *Node, _ int) (string, error) {
+	// Handle empty paragraphs (for spacing)
+	if len(node.Content) == 0 {
+		return "", nil
+	}
+
 	text := r.renderInlineContent(node.Content)
 	return text, nil
 }
@@ -174,7 +190,8 @@ func (r *Renderer) renderImageBlock(node *Node) (string, error) {
 		alt = a
 	}
 
-	return fmt.Sprintf("![%s](%s)", alt, src), nil
+	// Use JSX/HTML format to preserve round-trip conversion
+	return fmt.Sprintf("<img\n  src=\"%s\"\n  alt=\"%s\"\n/>", src, alt), nil
 }
 
 // renderComponent renders a custom component
@@ -265,6 +282,27 @@ func (r *Renderer) renderInlineContent(nodes []Node) string {
 	var parts []string
 
 	for _, node := range nodes {
+		// Handle hardBreak nodes (line breaks within paragraph)
+		if node.Type == "hardBreak" {
+			parts = append(parts, "\n")
+			continue
+		}
+
+		// Handle imageBlock nodes that may appear inline
+		if node.Type == "imageBlock" {
+			src := ""
+			alt := ""
+			if s, ok := node.Attrs["src"].(string); ok {
+				src = s
+			}
+			if a, ok := node.Attrs["alt"].(string); ok {
+				alt = a
+			}
+			// Render as markdown inline image
+			parts = append(parts, fmt.Sprintf("![%s](%s)", alt, src))
+			continue
+		}
+
 		if node.Type != "text" {
 			continue
 		}

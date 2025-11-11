@@ -27,9 +27,26 @@ func (p *Parser) Parse(mdx string) (*Document, error) {
 	for i < len(lines) {
 		line := lines[i]
 
-		// Skip empty lines
+		// Handle empty lines - create empty paragraphs for extra spacing
 		if strings.TrimSpace(line) == "" {
-			i++
+			// Count consecutive empty lines
+			emptyCount := 0
+			j := i
+			for j < len(lines) && strings.TrimSpace(lines[j]) == "" {
+				emptyCount++
+				j++
+			}
+
+			// First empty line is just a paragraph separator
+			// Additional empty lines create empty paragraph nodes
+			for k := 1; k < emptyCount; k++ {
+				doc.Content = append(doc.Content, Node{
+					Type:    "paragraph",
+					Content: []Node{},
+				})
+			}
+
+			i = j
 			continue
 		}
 
@@ -190,7 +207,7 @@ func (p *Parser) parseParagraph(lines []string, start int) (*Node, int, error) {
 		line := lines[i]
 		trimmed := strings.TrimSpace(line)
 
-		// Stop at empty line
+		// Stop at empty line (paragraph separator)
 		if trimmed == "" {
 			break
 		}
@@ -222,8 +239,18 @@ func (p *Parser) parseParagraph(lines []string, start int) (*Node, int, error) {
 		return nil, 1, nil
 	}
 
-	text := strings.Join(paragraphLines, " ")
-	content := p.parseInlineContent(text)
+	// Build content with hard breaks between lines
+	var content []Node
+	for lineIdx, lineText := range paragraphLines {
+		// Parse inline content for this line
+		lineContent := p.parseInlineContent(lineText)
+		content = append(content, lineContent...)
+
+		// Add hard break after each line except the last
+		if lineIdx < len(paragraphLines)-1 {
+			content = append(content, Node{Type: "hardBreak"})
+		}
+	}
 
 	return &Node{
 		Type:    "paragraph",
