@@ -37,11 +37,11 @@ func ReplaceComponents(cnf config.Config) error {
 		}
 
 		if info.IsDir() {
-			if err := utils.CopyDir(srcPath, destPath, true); err != nil {
+			if err := utils.CopyDir(srcPath, destPath, false); err != nil {
 				return fmt.Errorf("error copying directory '%s': %v", srcPath, err)
 			}
 		} else {
-			if err := utils.CopyFile(srcPath, destPath, info.Mode(), true); err != nil {
+			if err := utils.CopyFile(srcPath, destPath, info.Mode(), false); err != nil {
 				return fmt.Errorf("error copying file '%s': %v", destPath, err)
 			}
 		}
@@ -61,12 +61,12 @@ func ReplaceComponents(cnf config.Config) error {
 		}
 
 		if info.IsDir() {
-			if err := utils.CopyDir(srcPath, destPath, true); err != nil {
+			if err := utils.CopyDir(srcPath, destPath, false); err != nil {
 				return fmt.Errorf("error copying directory '%s': %v", srcPath, err)
 			}
 		} else {
 			// Use CopyFile with parsing enabled - it will only convert .mdx/.md files
-			if err := utils.CopyFile(srcPath, destPath, info.Mode(), true); err != nil {
+			if err := utils.CopyFile(srcPath, destPath, info.Mode(), false); err != nil {
 				return fmt.Errorf("error copying file '%s': %v", srcPath, err)
 			}
 		}
