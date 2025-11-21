@@ -15,7 +15,6 @@ import (
 
 	"github.com/GitDocAI/gitdocai-cli/schemas"
 	"github.com/GitDocAI/gitdocai-cli/utils"
-	"github.com/GitDocAI/inkflow"
 )
 
 // Config holds server configuration passed to StartWebhook.
@@ -273,27 +272,14 @@ func docHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Get single document
 func getDocumentHandler(w http.ResponseWriter, r *http.Request, docId string) {
-	// Add .json extension if not present
-	if !strings.HasSuffix(docId, ".json") {
-		docId = docId + ".json"
-	}
 	docPath := filepath.Join(webhookConfig.DocsPath, docId)
 
-	data, err := os.ReadFile(docPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			http.Error(w, "Document not found", http.StatusNotFound)
-		} else {
-			log.Printf("Error reading document %s: %v", docId, err)
-			http.Error(w, "Failed to read document", http.StatusInternalServerError)
-		}
+	if _, err := os.Stat(docPath); os.IsNotExist(err) {
+		http.Error(w, "Document not found", http.StatusNotFound)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(data)
+	http.ServeFile(w, r, docPath)
 }
 
 // Save document
@@ -305,34 +291,6 @@ func saveDocumentHandler(w http.ResponseWriter, r *http.Request, docId string) {
 		return
 	}
 	defer r.Body.Close()
-
-	var req SaveContentRequest
-	if err := json.Unmarshal(body, &req); err != nil {
-		http.Error(w, "Invalid JSON in request body", http.StatusBadRequest)
-		return
-	}
-
-	// Validate that content is valid JSON
-	var contentData interface{}
-	if err := json.Unmarshal([]byte(req.Content), &contentData); err != nil {
-		http.Error(w, "Content must be valid JSON", http.StatusBadRequest)
-		return
-	}
-
-	// Convert JSON to MDX using inkflow
-	mdxContent, err := inkflow.RenderJSONToMDX(req.Content, nil)
-	if err != nil {
-		log.Printf("❌ Error converting JSON to MDX: %v", err)
-		log.Printf("📄 Full JSON that failed: %s", req.Content)
-		http.Error(w, fmt.Sprintf("Failed to convert JSON to MDX: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	// Remove .json extension and add .mdx if needed
-	docId = strings.TrimSuffix(docId, ".json")
-	if !strings.HasSuffix(docId, ".mdx") {
-		docId = docId + ".mdx"
-	}
 
 	// Build path to source file (InputPath)
 	mdxPath := filepath.Join(webhookConfig.InputPath, docId)
@@ -346,7 +304,7 @@ func saveDocumentHandler(w http.ResponseWriter, r *http.Request, docId string) {
 	}
 
 	// Write the MDX file to InputPath
-	if err := os.WriteFile(mdxPath, []byte(mdxContent), 0644); err != nil {
+	if err := os.WriteFile(mdxPath, []byte(body), 0644); err != nil {
 		log.Printf("Error writing MDX file %s: %v", mdxPath, err)
 		http.Error(w, "Failed to save document", http.StatusInternalServerError)
 		return

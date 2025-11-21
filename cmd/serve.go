@@ -28,15 +28,15 @@ func Serve(serveInput, command string) error {
 		utils.PrintDivider()
 	}
 
-	utils.PrintStep("Checking for theme updates...")
-	err := DownloadThemes(true)
-	if err != nil {
-		utils.PrintError(fmt.Sprintf("Failed to update themes: %v", err))
-		return fmt.Errorf("failed to update themes: %v", err)
-	}
+	// utils.PrintStep("Checking for theme updates...")
+	// err := DownloadThemes(true)
+	// if err != nil {
+	// 	utils.PrintError(fmt.Sprintf("Failed to update themes: %v", err))
+	// 	return fmt.Errorf("failed to update themes: %v", err)
+	// }
 	utils.PrintDivider()
 
-	err = Deploy(serveInput, "", true)
+	err := Deploy(serveInput, "", true)
 	if err != nil {
 		utils.PrintError(fmt.Sprintf("Failed to deploy: %v", err))
 		return fmt.Errorf("failed to deploy: %v", err)
@@ -91,13 +91,13 @@ func Serve(serveInput, command string) error {
 		"VITE_SOURCE":      "/docs",
 	}
 
-	err = utils.RunWithSpinner("Installing dependencies...", func() error {
-		errStr, isError := utils.ExecuteCmd("npm", cnf.OutputPath, "install", "--force")
-		if isError {
-			return fmt.Errorf("%v", errStr)
-		}
-		return nil
-	})
+	// err = utils.RunWithSpinner("Installing dependencies...", func() error {
+	// 	errStr, isError := utils.ExecuteCmd("npm", cnf.OutputPath, "install", "--force")
+	// 	if isError {
+	// 		return fmt.Errorf("%v", errStr)
+	// 	}
+	// 	return nil
+	// })
 	if err != nil {
 		utils.PrintError(fmt.Sprintf("Failed to install dependencies: %v", err))
 		return fmt.Errorf("failed to execute npm install: %v", err)
