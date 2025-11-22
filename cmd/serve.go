@@ -45,7 +45,7 @@ func Serve(serveInput, command string) error {
 	// Obtener configuración global del proyecto
 	cnf := config.GetConfig()
 
-	docs_file := filepath.Join(cnf.OutputPath, "public")
+	docs_file := cnf.InputPath
 	build_path := filepath.Join(cnf.OutputPath, "dist") // Vite builds to dist/ by default
 
 	// Configure authentication only for production mode

@@ -72,18 +72,13 @@ func StartWebhook(cfg Config) (int, error) {
 
 	// Build the HTTP handlers (same handlers rely on webhookConfig)
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/docs/list", corsMiddleware(authMiddleware(getDocListHandler)))
-	mux.HandleFunc("/api/docs/", corsMiddleware(corsMiddleware(docHandler)))
-	mux.HandleFunc("/api/config", corsMiddleware(authMiddleware(configHandler)))
-	mux.HandleFunc("/api/files/upload", corsMiddleware(authMiddleware(uploadFileHandler)))
-	mux.HandleFunc("/api/files/rename", corsMiddleware(authMiddleware(renameFileHandler)))
-	mux.HandleFunc("/api/health", corsMiddleware(authMiddleware(healthHandler)))
+	mux.HandleFunc("/api/docs/content/*", corsMiddleware(corsMiddleware(docHandler)))
 
 	// SPA handler: serve index.html for all routes except static files
 	mux.HandleFunc("/", corsMiddleware(authMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		// Ignore api endpoints
-		if strings.HasPrefix(r.URL.Path, "/api/") {
-			http.NotFound(w, r)
+		if strings.HasPrefix(r.URL.Path, "/api/docs/content") {
+			docHandler(w, r)
 			return
 		}
 
@@ -246,8 +241,8 @@ func getDocListHandler(w http.ResponseWriter, r *http.Request) {
 
 // Document handler (GET and PUT)
 func docHandler(w http.ResponseWriter, r *http.Request) {
-	// Extract docId from path: /api/docs/{docId}
-	docId := strings.TrimPrefix(r.URL.Path, "/api/docs/")
+	// Extract docId from path: /api/docs/content/{docId}
+	docId := strings.TrimPrefix(r.URL.Path, "/api/docs/content")
 	if docId == "" {
 		http.Error(w, "Document ID is required", http.StatusBadRequest)
 		return
@@ -279,6 +274,11 @@ func getDocumentHandler(w http.ResponseWriter, r *http.Request, docId string) {
 		http.Error(w, "Document not found", http.StatusNotFound)
 		return
 	}
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
+
 	http.ServeFile(w, r, docPath)
 }
 
@@ -290,6 +290,7 @@ func saveDocumentHandler(w http.ResponseWriter, r *http.Request, docId string) {
 		http.Error(w, "Failed to read request body", http.StatusBadRequest)
 		return
 	}
+
 	defer r.Body.Close()
 
 	// Build path to source file (InputPath)
