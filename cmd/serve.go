@@ -98,10 +98,10 @@ func Serve(serveInput, command string) error {
 	// 	}
 	// 	return nil
 	// })
-	if err != nil {
-		utils.PrintError(fmt.Sprintf("Failed to install dependencies: %v", err))
-		return fmt.Errorf("failed to execute npm install: %v", err)
-	}
+	// if err != nil {
+	// 	utils.PrintError(fmt.Sprintf("Failed to install dependencies: %v", err))
+	// 	return fmt.Errorf("failed to execute npm install: %v", err)
+	// }
 	utils.PrintSuccess("Dependencies installed")
 
 	go func() {

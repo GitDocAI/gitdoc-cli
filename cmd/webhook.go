@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,10 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/GitDocAI/gitdocai-cli/schemas"
-	"github.com/GitDocAI/gitdocai-cli/utils"
 )
 
 // Config holds server configuration passed to StartWebhook.
@@ -26,7 +23,6 @@ type UploadFileRequest = schemas.UploadFileRequest
 type RenameFileRequest = schemas.RenameFileRequest
 
 var webhookConfig Config
-var requestClient *utils.RemoteClient
 
 // StartWebhook initializes the server using the provided config, finds an available port
 // starting from cfg.Port (or 8080 if empty) and starts the HTTP server in a goroutine.
@@ -65,10 +61,6 @@ func StartWebhook(cfg Config) (int, error) {
 	}
 
 	webhookConfig = cfg
-
-	if webhookConfig.RemoteFileSystemUrl != "" {
-		requestClient = utils.NewRemoteClient(webhookConfig.RemoteFileSystemUrl, cfg.Authentication)
-	}
 
 	// Build the HTTP handlers (same handlers rely on webhookConfig)
 	mux := http.NewServeMux()
@@ -202,43 +194,6 @@ func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// Health check handler
-func healthHandler(w http.ResponseWriter, r *http.Request) {
-	response := map[string]interface{}{
-		"status": "healthy",
-		"time":   time.Now().Format(time.RFC3339),
-		"config": map[string]string{
-			"docs_path":   webhookConfig.DocsPath,
-			"config_path": webhookConfig.ConfigPath,
-		},
-	}
-	jsonResponse(w, http.StatusOK, response)
-}
-
-// Get documentation list handler
-func getDocListHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	if requestClient != nil {
-		requestClient.Get("")
-		return
-	}
-
-	indexPath := filepath.Join(webhookConfig.DocsPath, "index.json")
-	data, err := os.ReadFile(indexPath)
-	if err != nil {
-		log.Printf("Error reading index.json: %v", err)
-		http.Error(w, "Failed to read documentation list", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(data)
-}
-
 // Document handler (GET and PUT)
 func docHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract docId from path: /api/docs/content/{docId}
@@ -277,7 +232,6 @@ func getDocumentHandler(w http.ResponseWriter, r *http.Request, docId string) {
 	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
 	w.Header().Set("Pragma", "no-cache")
 	w.Header().Set("Expires", "0")
-
 
 	http.ServeFile(w, r, docPath)
 }
@@ -319,260 +273,9 @@ func saveDocumentHandler(w http.ResponseWriter, r *http.Request, docId string) {
 	jsonResponse(w, http.StatusOK, response)
 }
 
-// Config handler (GET and PUT)
-func configHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		getConfigHandler(w, r)
-	case http.MethodPut:
-		saveConfigHandler(w, r)
-	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-	}
-}
-
-// Get configuration
-func getConfigHandler(w http.ResponseWriter, r *http.Request) {
-	data, err := os.ReadFile(webhookConfig.ConfigPath)
-	if err != nil {
-		log.Printf("Error reading config: %v", err)
-		http.Error(w, "Failed to read configuration", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(data)
-}
-
-// Save configuration
-func saveConfigHandler(w http.ResponseWriter, r *http.Request) {
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
-		return
-	}
-	defer r.Body.Close()
-
-	// Validate JSON
-	var configData interface{}
-	if err := json.Unmarshal(body, &configData); err != nil {
-		http.Error(w, "Invalid JSON format", http.StatusBadRequest)
-		return
-	}
-
-	// Pretty print
-	prettyJSON, err := json.MarshalIndent(configData, "", "  ")
-	if err != nil {
-		http.Error(w, "Failed to format JSON", http.StatusInternalServerError)
-		return
-	}
-
-	// Ensure directory exists
-	configDir := filepath.Dir(webhookConfig.ConfigPath)
-	if err := os.MkdirAll(configDir, 0755); err != nil {
-		log.Printf("Error creating config directory %s: %v", configDir, err)
-		http.Error(w, "Failed to create directory", http.StatusInternalServerError)
-		return
-	}
-
-	if err := os.WriteFile(webhookConfig.ConfigPath, prettyJSON, 0644); err != nil {
-		log.Printf("Error writing config: %v", err)
-		http.Error(w, "Failed to save configuration", http.StatusInternalServerError)
-		return
-	}
-
-	log.Printf("✅ Successfully saved configuration")
-
-	response := map[string]interface{}{
-		"success": true,
-		"message": "Configuration saved successfully",
-	}
-	jsonResponse(w, http.StatusOK, response)
-}
-
-// Upload file handler
-func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
-		return
-	}
-	defer r.Body.Close()
-
-	var req UploadFileRequest
-	if err := json.Unmarshal(body, &req); err != nil {
-		http.Error(w, "Invalid JSON format", http.StatusBadRequest)
-		return
-	}
-
-	// Validate required fields
-	if req.FilePath == "" {
-		http.Error(w, "file_path is required", http.StatusBadRequest)
-		return
-	}
-	if req.FileData == "" {
-		http.Error(w, "file_data is required", http.StatusBadRequest)
-		return
-	}
-
-	// Sanitize file path to prevent directory traversal
-	if strings.Contains(req.FilePath, "..") {
-		http.Error(w, "Invalid file path", http.StatusBadRequest)
-		return
-	}
-
-	// Clean the path
-	cleanPath := filepath.Clean(req.FilePath)
-
-	// Decode base64 data
-	fileBytes, err := base64.StdEncoding.DecodeString(req.FileData)
-	if err != nil {
-		http.Error(w, "Invalid base64 data", http.StatusBadRequest)
-		return
-	}
-
-	// Build full file path
-	fullPath := filepath.Join(webhookConfig.DocsPath, cleanPath)
-
-	// Ensure directory exists
-	fileDir := filepath.Dir(fullPath)
-	if err := os.MkdirAll(fileDir, 0755); err != nil {
-		log.Printf("Error creating directory %s: %v", fileDir, err)
-		http.Error(w, "Failed to create directory", http.StatusInternalServerError)
-		return
-	}
-
-	// Write file
-	if err := os.WriteFile(fullPath, fileBytes, 0644); err != nil {
-		log.Printf("Error writing file %s: %v", fullPath, err)
-		http.Error(w, "Failed to save file", http.StatusInternalServerError)
-		return
-	}
-
-	log.Printf("✅ Successfully uploaded file: %s", cleanPath)
-
-	response := map[string]interface{}{
-		"success":   true,
-		"message":   "File uploaded successfully",
-		"file_path": cleanPath,
-	}
-	jsonResponse(w, http.StatusOK, response)
-}
-
-// Rename file handler
-func renameFileHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
-		return
-	}
-	defer r.Body.Close()
-
-	var req RenameFileRequest
-	if err := json.Unmarshal(body, &req); err != nil {
-		http.Error(w, "Invalid JSON format", http.StatusBadRequest)
-		return
-	}
-
-	// Validate required fields
-	if req.OldPath == "" {
-		http.Error(w, "old_path is required", http.StatusBadRequest)
-		return
-	}
-	if req.NewPath == "" {
-		http.Error(w, "new_path is required", http.StatusBadRequest)
-		return
-	}
-
-	// Sanitize paths to prevent directory traversal
-	if strings.Contains(req.OldPath, "..") || strings.Contains(req.NewPath, "..") {
-		http.Error(w, "Invalid file path", http.StatusBadRequest)
-		return
-	}
-
-	// Clean the paths
-	oldPath := filepath.Clean(req.OldPath)
-	newPath := filepath.Clean(req.NewPath)
-
-	// Add .json extension if not present (convert .mdx to .json if necessary)
-	if !strings.HasSuffix(oldPath, ".json") {
-		oldPath = strings.TrimSuffix(oldPath, ".mdx") + ".json"
-	}
-	if !strings.HasSuffix(newPath, ".json") {
-		newPath = strings.TrimSuffix(newPath, ".mdx") + ".json"
-	}
-
-	// Build full file paths
-	fullOldPath := filepath.Join(webhookConfig.DocsPath, oldPath)
-	fullNewPath := filepath.Join(webhookConfig.DocsPath, newPath)
-
-	// Check if old file exists
-	if _, err := os.Stat(fullOldPath); os.IsNotExist(err) {
-		http.Error(w, fmt.Sprintf("File not found: %s", oldPath), http.StatusNotFound)
-		return
-	}
-
-	// Check if new file already exists
-	if _, err := os.Stat(fullNewPath); err == nil {
-		http.Error(w, fmt.Sprintf("File already exists: %s", newPath), http.StatusConflict)
-		return
-	}
-
-	// Ensure new directory exists
-	newDir := filepath.Dir(fullNewPath)
-	if err := os.MkdirAll(newDir, 0755); err != nil {
-		log.Printf("Error creating directory %s: %v", newDir, err)
-		http.Error(w, "Failed to create directory", http.StatusInternalServerError)
-		return
-	}
-
-	// Rename/move the file
-	if err := os.Rename(fullOldPath, fullNewPath); err != nil {
-		log.Printf("Error renaming file from %s to %s: %v", fullOldPath, fullNewPath, err)
-		http.Error(w, "Failed to rename file", http.StatusInternalServerError)
-		return
-	}
-
-	response := map[string]interface{}{
-		"success":  true,
-		"message":  "File renamed successfully",
-		"old_path": oldPath,
-		"new_path": newPath,
-	}
-	jsonResponse(w, http.StatusOK, response)
-}
-
 // Helper: JSON response
 func jsonResponse(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(data)
-}
-
-// Helper: Copy file
-func copyFile(src, dst string) error {
-	sourceFile, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer sourceFile.Close()
-
-	destFile, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer destFile.Close()
-
-	_, err = io.Copy(destFile, sourceFile)
-	return err
 }
