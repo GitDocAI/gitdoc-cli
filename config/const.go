@@ -8,7 +8,7 @@ import (
 const VERSION = ""
 
 var (
-	ThemesRepositoryURL = "https://github.com/GitDocAI/themes-prototype"
+	ThemesRepositoryURL = "https://github.com/GitDocAI/themes"
 	DefaultGitDocAIPath = fmt.Sprintf("%s/.gitdocai", os.Getenv("HOME"))
 	DefaultThemesPath   = fmt.Sprintf("%s/themes", DefaultGitDocAIPath)
 	ConfigFileName      = "gitdocai.config.json"
