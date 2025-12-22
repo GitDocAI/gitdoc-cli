@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/GitDocAI/gitdocai-cli/schemas"
 )
@@ -33,14 +32,9 @@ func StartWebhook(cfg Config) (int, error) {
 		cfg.Port = "8080"
 	}
 	if cfg.AllowOrigin == "" {
-		cfg.AllowOrigin = "http://localhost:8080"
+		cfg.AllowOrigin = "*"
 	}
 
-	// Resolve absolute paths for docs, input, and config
-	absDocsPath, err := filepath.Abs(cfg.DocsPath)
-	if err != nil {
-		return 0, fmt.Errorf("failed to resolve docs path: %w", err)
-	}
 	absInputPath, err := filepath.Abs(cfg.InputPath)
 	if err != nil {
 		return 0, fmt.Errorf("failed to resolve input path: %w", err)
@@ -49,7 +43,6 @@ func StartWebhook(cfg Config) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("failed to resolve config path: %w", err)
 	}
-	cfg.DocsPath = absDocsPath
 	cfg.InputPath = absInputPath
 	cfg.ConfigPath = absConfigPath
 
@@ -64,23 +57,21 @@ func StartWebhook(cfg Config) (int, error) {
 
 	// Build the HTTP handlers (same handlers rely on webhookConfig)
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/docs/content/*", corsMiddleware(corsMiddleware(docHandler)))
+	mux.HandleFunc("/api/content/api/v1/filesystem/entry",corsMiddleware(saveDocumentHandler))
+	mux.HandleFunc("/api/content/api/v1/filesystem/file",corsMiddleware(getDocumentHandler))
+	mux.HandleFunc("/api/content/api/v1/filesystem/move",corsMiddleware(moveDocumentHandler))
+	mux.HandleFunc("/api/content/api/v1/filesystem/download",corsMiddleware(downLoadHandler))
+	mux.HandleFunc("/api/content/api/v1/filesystem/upload",corsMiddleware(upLoadHandler))
+	mux.HandleFunc("/api/theme",corsMiddleware(themeHandler))
 
 	// SPA handler: serve index.html for all routes except static files
-	mux.HandleFunc("/", corsMiddleware(authMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		// Ignore api endpoints
-		if strings.HasPrefix(r.URL.Path, "/api/docs/content") {
-			docHandler(w, r)
-			return
-		}
-
+	mux.HandleFunc("/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		// Build the full file path
 		path := filepath.Join(webhookConfig.BuildPath, r.URL.Path)
 
 		// Check if the path is a file that exists
 		fileInfo, err := os.Stat(path)
 		if err == nil && !fileInfo.IsDir() {
-			// File exists, serve it
 			http.ServeFile(w, r, path)
 			return
 		}
@@ -92,7 +83,7 @@ func StartWebhook(cfg Config) (int, error) {
 		} else {
 			http.Error(w, "Site not built yet. Run 'npm run build' first.", http.StatusNotFound)
 		}
-	})))
+	}))
 
 	// Port scanning: try ports starting at cfg.Port and increment until free
 	startPort, err := parsePort(cfg.Port)
@@ -148,35 +139,6 @@ func parsePort(p string) (int, error) {
 	return port, nil
 }
 
-// Authentication middleware - only validates in production mode
-func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// Skip auth in dev and preview modes
-		if webhookConfig.Mode != "prod" {
-			next(w, r)
-			return
-		}
-
-		// Only validate auth in production mode
-		orgId := r.Header.Get("X-Organization-ID")
-		sessionToken := r.Header.Get("X-Session-Token")
-		projectId := r.Header.Get("X-Project-ID")
-
-		// Check if all auth values are provided and match
-		if webhookConfig.Authentication.OrganizationID != "" &&
-			webhookConfig.Authentication.ProjectID != "" &&
-			webhookConfig.Authentication.SessionToken != "" &&
-			orgId == webhookConfig.Authentication.OrganizationID &&
-			projectId == webhookConfig.Authentication.ProjectID &&
-			sessionToken == webhookConfig.Authentication.SessionToken {
-			next(w, r)
-			return
-		}
-
-		http.Error(w, "Access denied", http.StatusUnauthorized)
-	}
-}
-
 // CORS middleware
 func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -194,36 +156,52 @@ func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// Document handler (GET and PUT)
-func docHandler(w http.ResponseWriter, r *http.Request) {
-	// Extract docId from path: /api/docs/content/{docId}
-	docId := strings.TrimPrefix(r.URL.Path, "/api/docs/content")
-	if docId == "" {
-		http.Error(w, "Document ID is required", http.StatusBadRequest)
-		return
-	}
 
-	// Sanitize docId to prevent directory traversal
-	if strings.Contains(docId, "..") {
-		http.Error(w, "Invalid document ID", http.StatusBadRequest)
-		return
-	}
+//==================== Generals================
+type EntryType string
+const (
+	EntryTypeFile EntryType ="file"
+	EntryTypeFolder EntryType ="folder"
+)
 
-	// Clean the path to remove any double slashes or other issues
-	docId = filepath.Clean(docId)
 
-	switch r.Method {
-	case http.MethodGet:
-		getDocumentHandler(w, r, docId)
-	case http.MethodPut:
-		saveDocumentHandler(w, r, docId)
-	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-	}
+// Helper: JSON response
+func jsonResponse(w http.ResponseWriter, status int, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(data)
 }
 
-func getDocumentHandler(w http.ResponseWriter, r *http.Request, docId string) {
-	docPath := filepath.Join(webhookConfig.DocsPath, docId)
+
+//==================== Get Document Controller============
+
+type GetDocumentBody struct{
+	Path string `json:"path"`
+}
+
+
+func getDocumentHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method!= http.MethodPost{
+		http.Error(w, "Method not allowed", http.StatusBadRequest)
+		return
+	}
+    body,err:=io.ReadAll(r.Body)
+	if err!=nil{
+		http.Error(w, "Body is required", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	var entry_body GetDocumentBody
+
+	err = json.Unmarshal(body,&entry_body)
+	if err!=nil{
+		http.Error(w, "wrong body", http.StatusBadRequest)
+		return
+	}
+
+
+	docPath := filepath.Join(webhookConfig.DocsPath,entry_body.Path )
 
 	if _, err := os.Stat(docPath); os.IsNotExist(err) {
 		http.Error(w, "Document not found", http.StatusNotFound)
@@ -233,11 +211,32 @@ func getDocumentHandler(w http.ResponseWriter, r *http.Request, docId string) {
 	w.Header().Set("Pragma", "no-cache")
 	w.Header().Set("Expires", "0")
 
-	http.ServeFile(w, r, docPath)
+	file,err:=os.Open(docPath)
+	if err!=nil{
+		http.Error(w, "could not open file", http.StatusInternalServerError)
+		return
+	}
+
+	content,err:= io.ReadAll(file)
+	defer file.Close()
+
+	response :=map[string]any{
+		"content":string(content),
+    }
+
+	jsonResponse(w, http.StatusOK,response)
+}
+
+//==================== Save Document Controller============
+
+type SaveDocumentBody struct{
+	Path string `json:"path"`
+	Type EntryType `json:"type"`
+	Content string `json:"content"`
 }
 
 // Save document
-func saveDocumentHandler(w http.ResponseWriter, r *http.Request, docId string) {
+func saveDocumentHandler(w http.ResponseWriter, r *http.Request) {
 	// Read request body
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -247,8 +246,16 @@ func saveDocumentHandler(w http.ResponseWriter, r *http.Request, docId string) {
 
 	defer r.Body.Close()
 
+	var entry_body SaveDocumentBody
+
+	err = json.Unmarshal(body,&entry_body)
+	if err!=nil{
+		http.Error(w, "wrong body", http.StatusBadRequest)
+		return
+	}
+
 	// Build path to source file (InputPath)
-	mdxPath := filepath.Join(webhookConfig.InputPath, docId)
+	mdxPath := filepath.Join(webhookConfig.InputPath, entry_body.Path)
 	mdxDir := filepath.Dir(mdxPath)
 
 	// Ensure directory exists
@@ -258,24 +265,164 @@ func saveDocumentHandler(w http.ResponseWriter, r *http.Request, docId string) {
 		return
 	}
 
-	// Write the MDX file to InputPath
-	if err := os.WriteFile(mdxPath, []byte(body), 0644); err != nil {
-		log.Printf("Error writing MDX file %s: %v", mdxPath, err)
-		http.Error(w, "Failed to save document", http.StatusInternalServerError)
-		return
+	if entry_body.Type == EntryTypeFile{
+		// Write the MDX file to InputPath
+		if err := os.WriteFile(mdxPath, []byte(entry_body.Content), 0644); err != nil {
+			log.Printf("Error writing MDX file %s: %v", mdxPath, err)
+			http.Error(w, "Failed to save document", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	response := map[string]interface{}{
 		"success": true,
-		"message": fmt.Sprintf("Document %s saved successfully", docId),
-		"docId":   docId,
+		"message": fmt.Sprintf("Document %s saved successfully", entry_body.Path),
+		"docId":   entry_body.Path,
 	}
 	jsonResponse(w, http.StatusOK, response)
 }
 
-// Helper: JSON response
-func jsonResponse(w http.ResponseWriter, status int, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
+//===================Move Document=============================
+type MoveDocumentBody struct{
+	From string `json:"from"`
+	To string `json:"to"`
+}
+
+func moveDocumentHandler(w http.ResponseWriter, r *http.Request){
+	// Read request body
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		return
+	}
+
+	defer r.Body.Close()
+
+	var move_body MoveDocumentBody
+
+	err = json.Unmarshal(body,&move_body)
+	if err!=nil{
+		http.Error(w, "wrong body", http.StatusBadRequest)
+		return
+	}
+
+
+	fromPath := filepath.Join(webhookConfig.InputPath, move_body.From)
+	toPath := filepath.Join(webhookConfig.InputPath, move_body.To)
+
+	fromFile, err := os.Open(fromPath)
+    if err != nil {
+		http.Error(w, "Could not open file", http.StatusInternalServerError)
+		return
+    }
+    defer fromFile.Close()
+
+    outputFile, err := os.Create(toPath)
+    if err != nil {
+		http.Error(w, "Could not create new file", http.StatusInternalServerError)
+		return
+    }
+    defer outputFile.Close()
+
+    _, err = io.Copy(outputFile, fromFile)
+    if err != nil {
+		http.Error(w, "Couldn't copy to dest from source:", http.StatusInternalServerError)
+		return
+    }
+
+    err = os.Remove(fromPath)
+    if err != nil {
+		http.Error(w, "Couldn't remove source file after movement", http.StatusInternalServerError)
+		return
+    }
+	w.WriteHeader(http.StatusOK)
+}
+//========================Download Handler=========================
+
+type DownloadBody struct{
+	Path string `json:"path"`
+}
+
+
+func downLoadHandler(w http.ResponseWriter, r *http.Request){
+
+	// Read request body
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		return
+	}
+
+	defer r.Body.Close()
+
+	var move_body DownloadBody
+
+	err = json.Unmarshal(body,&move_body)
+	if err!=nil{
+		http.Error(w, "wrong body", http.StatusBadRequest)
+		return
+	}
+
+	file := filepath.Join(webhookConfig.InputPath, move_body.Path)
+	http.ServeFile(w,r,file)
+
+}
+
+//========================Upload Handler=========================
+
+func upLoadHandler(w http.ResponseWriter, r *http.Request){
+	r.ParseMultipartForm(32 << 26)
+	file,handle,err:= r.FormFile("file")
+	if err!=nil{
+		http.Error(w, "wrong file", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+	assets_folder := filepath.Join(webhookConfig.InputPath,"assets")
+	if err := os.MkdirAll(assets_folder, 0755); err != nil {
+		http.Error(w, "Failed to create assets directory", http.StatusInternalServerError)
+		return
+	}
+
+	asset_path := filepath.Join(assets_folder,handle.Filename)
+	destiny,err:=os.Create(asset_path)
+	if err!=nil{
+		http.Error(w, "Failed to create asset", http.StatusInternalServerError)
+		return
+	}
+	defer destiny.Close()
+
+	_,err=io.Copy(destiny,file)
+	if err!=nil{
+		http.Error(w, "Failed to copy asset", http.StatusInternalServerError)
+		return
+	}
+
+	jsonResponse(w,http.StatusOK,map[string]any{
+		"file_path":asset_path,
+	})
+}
+//===========================Theme Handler ===============
+
+func themeHandler(w http.ResponseWriter, r *http.Request){
+	file,err:=os.Open(webhookConfig.ConfigPath)
+	if err!=nil{
+		http.Error(w, "Failed to open config file", http.StatusInternalServerError)
+		return
+	}
+	defer file.Close()
+	file_content,err:= io.ReadAll(file)
+	if err!=nil{
+		http.Error(w, "Failed to read config file", http.StatusInternalServerError)
+		return
+	}
+
+	var config schemas.SiteConfig
+	err= json.Unmarshal(file_content,&config)
+	if err!=nil{
+		http.Error(w, "wrong configuration", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text")
+	io.WriteString(w,config.Theme)
 }

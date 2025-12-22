@@ -170,9 +170,14 @@ func CopyDir(src string, dst string,with_parsing bool) error {
 		srcPath := filepath.Join(src, entry.Name())
 		dstPath := filepath.Join(dst, entry.Name())
 
+
 		info, err := entry.Info()
 		if err != nil {
 			return err
+		}
+
+		if strings.HasPrefix(info.Name(),"."){
+			continue
 		}
 
 		if entry.IsDir() {
