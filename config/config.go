@@ -183,11 +183,8 @@ func validateItem(item schemas.Item) error {
 			}
 		}
 	case "openapi":
-		// if item.ApiReference.Method == "" || item.ApiReference.Reference == "" || item.ApiReference.Path == "" {
-		// 	return fmt.Errorf("%s item '%s' must have 'method', 'reference', and 'path' in 'api_reference'", item.Type, item.Title)
-		// }
-		if item.Page == "" {
-			return fmt.Errorf("openapi item '%s' must have 'page' field", item.Title)
+		if item.ApiReference.Method == "" || item.ApiReference.Reference == "" || item.ApiReference.Path == "" {
+			return fmt.Errorf("%s item '%s' must have 'method', 'reference', and 'path' in 'api_reference'", item.Type, item.Title)
 		}
 		if len(item.Children) > 0 {
 			return fmt.Errorf("%s item '%s' cannot have children", item.Type, item.Title)

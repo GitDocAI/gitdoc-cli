@@ -16,169 +16,69 @@ import (
 func Serve(serveInput, command string) error {
 	utils.PrintBanner()
 	utils.PrintHeader(fmt.Sprintf("Starting %s mode", command))
+	config.LoadConfig(serveInput,"")
 
-	// Start flusher service for preview mode (Cloud)
-	if command == "preview" {
-		flusher, err := StartFlusher()
-		if err != nil {
-			utils.PrintError(fmt.Sprintf("Failed to start flusher service: %v", err))
-			return fmt.Errorf("failed to start flusher service: %v", err)
-		}
-		defer flusher.Stop()
-		utils.PrintDivider()
+	utils.PrintStep("Checking for theme updates...")
+	err := DownloadThemes(false)
+	if err != nil {
+		utils.PrintError(fmt.Sprintf("Failed to update themes: %v", err))
+		return fmt.Errorf("failed to update themes: %v", err)
 	}
-
-	// In preview mode, use prebuilt themes. In dev mode, use normal flow
-	var err error
-	if command == "preview" {
-		utils.PrintStep("Using prebuilt themes...")
-		err = DeployPrebuilt(serveInput, "")
-		if err != nil {
-			utils.PrintError(fmt.Sprintf("Failed to deploy prebuilt theme: %v", err))
-			return fmt.Errorf("failed to deploy prebuilt theme: %v", err)
-		}
-	} else {
-		utils.PrintStep("Checking for theme updates...")
-		err = DownloadThemes(true)
-		if err != nil {
-			utils.PrintError(fmt.Sprintf("Failed to update themes: %v", err))
-			return fmt.Errorf("failed to update themes: %v", err)
-		}
-		utils.PrintDivider()
-
-		err = Deploy(serveInput, "", true)
-		if err != nil {
-			utils.PrintError(fmt.Sprintf("Failed to deploy: %v", err))
-			return fmt.Errorf("failed to deploy: %v", err)
-		}
-	}
-
-	// Obtener configuración global del proyecto
-	cnf := config.GetConfig()
-
-	docs_file := filepath.Join(cnf.OutputPath, "public")
-	build_path := filepath.Join(cnf.OutputPath, "dist") // Vite builds to dist/ by default
-
-	// Configure authentication only for preview mode (Cloud)
-	var auth schemas.Authentication
-	if command == "preview" {
-		auth = schemas.Authentication{
-			OrganizationID: os.Getenv("ORGANIZATION_ID"),
-			ProjectID:      os.Getenv("PROJECT_ID"),
-			SessionToken:   os.Getenv("SESSION_TOKEN"),
-		}
-	}
-
-	// Determine port: use PORT env var in preview (for Cloud Run), otherwise default to 8082
-	port := "8082"
-	if command == "preview" {
-		if envPort := os.Getenv("PORT"); envPort != "" {
-			port = envPort
-		}
-	}
-
-	sourceMode := "dev"
-	if command == "preview" {
-		sourceMode = "production"
-	}
-
-	// Prepare webhook URL for Vite env vars
-	// In preview (Cloud), use relative path since frontend and backend are on same domain
-	// In dev, use localhost URL
-	var webhookURL string
-	if command == "dev" {
-		webhookURL = fmt.Sprintf("http://localhost:%s/api", port)
-	} else {
-		webhookURL = "/api" // Relative path for preview (Cloud)
-	}
-
-	envVars := map[string]any{
-		"VITE_MODE":        sourceMode,
-		"VITE_BACKEND_URL": webhookURL,
-		"VITE_USE_BACKEND": sourceMode == "dev",
-		"VITE_SOURCE":      "/docs",
-	}
-
-	// Copy assets from public/ to dist/ so they're accessible via the web server
-	// Do this for both preview and dev modes, but at different times
-	copyAssets := func() error {
-		assetsPublicPath := filepath.Join(docs_file, "assets")
-		assetsDistPath := filepath.Join(build_path, "assets")
-		if utils.CheckIfPathExist(assetsPublicPath) {
-			utils.PrintStep("Copying assets to build directory...")
-			if err := utils.CopyDir(assetsPublicPath, assetsDistPath, false); err != nil {
-				return fmt.Errorf("failed to copy assets: %v", err)
-			}
-			utils.PrintSuccess("Assets copied to build directory")
-		}
-		return nil
-	}
-
-	// In preview mode, skip npm install and build (already done in prebuild)
-	if command == "preview" {
-		utils.PrintSuccess("Using prebuilt dependencies and assets")
-		// Copy assets for preview mode
-		if err := copyAssets(); err != nil {
-			utils.PrintError(fmt.Sprintf("Failed to copy assets: %v", err))
-			return err
-		}
-	} else {
-		// Dev mode: install dependencies and build
-		err = utils.RunWithSpinner("Installing dependencies...", func() error {
-			errStr, isError := utils.ExecuteCmd("npm", cnf.OutputPath, "install", "--force")
-			if isError {
-				return fmt.Errorf("%v", errStr)
-			}
-			return nil
-		})
-		if err != nil {
-			utils.PrintError(fmt.Sprintf("Failed to install dependencies: %v", err))
-			return fmt.Errorf("failed to execute npm install: %v", err)
-		}
-		utils.PrintSuccess("Dependencies installed")
-
-		utils.PrintDivider()
-		utils.PrintSection(fmt.Sprintf("Running npm %s", command))
-		utils.PrintDivider()
-
-		err = utils.RunBlockingWithTerminalIO("npm", cnf.OutputPath, envVars, "run", "build")
-		if err != nil {
-			utils.PrintError(fmt.Sprintf("Failed to run npm %s: %v", command, err))
-			return fmt.Errorf("failed to run npm %s: %v", command, err)
-		}
-
-		// Copy assets for dev mode after build
-		if err := copyAssets(); err != nil {
-			utils.PrintError(fmt.Sprintf("Failed to copy assets: %v", err))
-			return err
-		}
-	}
-
-	go func() {
-		InitFolderListen(*cnf)
-	}()
-	utils.PrintSuccess("File watcher started")
 
 	utils.PrintDivider()
-	utils.PrintStep("Starting webhook server...")
+	cnf := config.GetConfig()
 
-	// Now that build is complete, start the webhook server
+
 	webhookCfg := schemas.Config{
-		Port:                port,
+		Port:                "8082",
 		AllowOrigin:         "*",
-		BuildPath:           build_path,
-		DocsPath:            docs_file,
+		BuildPath:           filepath.Join(config.GetThemesPath(),"dist"),
+		DocsPath:            cnf.InputPath,
 		InputPath:           cnf.InputPath,
-		ConfigPath:          filepath.Join(docs_file, config.ConfigFileName),
+		ConfigPath:          filepath.Join(cnf.InputPath, config.ConfigFileName),
 		RemoteFileSystemUrl: os.Getenv("FILESYSTEM_API_URL"),
-		Authentication:      auth,
-		Mode:                command, // "dev" or "preview"
 	}
 
 	actualPort, err := StartWebhook(webhookCfg)
 	if err != nil {
 		utils.PrintError(fmt.Sprintf("Failed to start webhook server: %v", err))
 		return fmt.Errorf("failed to start webhook server: %v", err)
+	}
+	webhookURL := fmt.Sprintf("http://localhost:%d/api", actualPort)
+
+	sourceMode := "visual-editor"
+	if command == "preview" {
+		sourceMode = "production"
+	} else if command == "prod" {
+		sourceMode = "production"
+	}
+
+	envVars := map[string]any{
+		"VITE_MODE":        sourceMode,
+		"VITE_BACKEND_URL": webhookURL,
+	}
+
+	err = utils.RunWithSpinner("Installing dependencies...", func() error {
+		errStr, isError := utils.ExecuteCmd("npm", config.GetThemesPath(), "install", "--force")
+		if isError {
+			return fmt.Errorf("%v", errStr)
+		}
+		return nil
+	})
+	if err != nil {
+		utils.PrintError(fmt.Sprintf("Failed to install dependencies: %v", err))
+		return fmt.Errorf("failed to execute npm install: %v", err)
+	}
+	utils.PrintSuccess("Dependencies installed")
+
+	utils.PrintDivider()
+	utils.PrintSection(fmt.Sprintf("Running npm %s", command))
+	utils.PrintDivider()
+
+	err = utils.RunBlockingWithTerminalIO("npm", config.GetThemesPath(), envVars, "run", "build")
+	if err != nil {
+		utils.PrintError(fmt.Sprintf("Failed to run npm %s: %v", command, err))
+		return fmt.Errorf("failed to run npm %s: %v", command, err)
 	}
 
 	utils.PrintDivider()
@@ -223,3 +123,4 @@ func openBrowser(url string) error {
 
 	return exec.Command(cmd, args...).Start()
 }
+

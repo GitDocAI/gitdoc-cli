@@ -14,7 +14,7 @@ import (
 
 func main() {
 	// Define the command-line flags and their default values
-	var serveInput, deployInput, deployOutput string
+	var serveInput string
 
 	// ################### Root Command ###################
 	// Create the root command
@@ -62,24 +62,8 @@ Available commands:
 			return cmd.Serve(previewInput, "preview")
 		},
 	}
-	// No input flag for preview - it always uses ~/.gitdocai/docsrc
-	rootCmd.AddCommand(previewCmd)
-
-	// ################### Deploy Command ###################
-	// Create the deploy command
-	deployCmd := &cobra.Command{
-		Use:    "deploy",
-		Short:  "[Internal] Deploy a GitDocAI project",
-		Hidden: true,
-		RunE: func(command *cobra.Command, args []string) error {
-			return cmd.Deploy(deployInput, deployOutput, false)
-		},
-	}
-
-	deployCmd.Flags().StringVar(&deployInput, "input", "", "Path to the source folder")
-	deployCmd.Flags().StringVar(&deployOutput, "output", "", "Path to the output folder")
-	rootCmd.AddCommand(deployCmd)
-
+	// No input flag for prod - it always uses ~/.gitdocai/docs
+	rootCmd.AddCommand(prodCmd)
 	// ################### Init Sample Command ###################
 	// Add the init-sample command to the root command
 	initCmd := &cobra.Command{

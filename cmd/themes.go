@@ -53,12 +53,8 @@ func DownloadThemes(forceUpdate bool) error {
 	return nil
 }
 
-func CopyTheme(targetDir string, themeName string) error {
-	sourceDir := filepath.Join(config.GetThemesPath(), themeName)
-
-	if !utils.CheckIfPathExist(sourceDir) {
-		return fmt.Errorf("theme '%s' does not exist", themeName)
-	}
+func CopyTemplate(targetDir string) error {
+	sourceDir := config.GetThemesPath()
 
 	err := filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -99,3 +95,4 @@ func CopyTheme(targetDir string, themeName string) error {
 
 	return nil
 }
+
