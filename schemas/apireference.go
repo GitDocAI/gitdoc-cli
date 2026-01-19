@@ -5,17 +5,17 @@ type OpenapiData struct {
 	Description     *string                    `json:"description,omitempty"`
 	Method          string                     `json:"method"`
 	Path            string                     `json:"path"`
-	OperationId     *string                    `json:"operation_id,omitempty"`
+	OperationId     *string                    `json:"operationId,omitempty"`
 	Tags            []string                   `json:"tags,omitempty"`
 	Summary         *string                    `json:"summary,omitempty"`
 	Deprecated      *bool                      `json:"deprecated,omitempty"`
-	Parameters      []Parameter                `json:"parameters"`
-	RequestBody     *RequestBody               `json:"request_body,omitempty"`
-	Responses       map[string]ResponseContent `json:"responses"`
+	Parameters      []Parameter                `json:"parameters,omitempty"`
+	RequestBody     *RequestBody               `json:"requestBody,omitempty"`
+	Responses       map[string]ResponseContent `json:"responses,omitempty"`
 	Security        []map[string][]string      `json:"security,omitempty"`
-	SecuritySchemas map[string]any             `json:"securitySchemes,omitempty"`
+	SecuritySchemas map[string]any             `json:"securitySchemas,omitempty"`
 	Servers         []Server                   `json:"servers,omitempty"`
-	ExternalDocs    *ExternalDocs              `json:"external_docs,omitempty"`
+	ExternalDocs    *ExternalDocs              `json:"externalDocs,omitempty"`
 }
 
 type Parameter struct {
@@ -24,10 +24,10 @@ type Parameter struct {
 	Description     string                 `json:"description,omitempty"`
 	Required        *bool                  `json:"required,omitempty"`
 	Deprecated      *bool                  `json:"deprecated,omitempty"`
-	AllowEmptyValue *bool                  `json:"allow_empty_value,omitempty"`
+	AllowEmptyValue *bool                  `json:"allowEmptyValue,omitempty"`
 	Style           string                 `json:"style,omitempty"`
 	Explode         *bool                  `json:"explode,omitempty"`
-	AllowReserved   *bool                  `json:"allow_reserved,omitempty"`
+	AllowReserved   *bool                  `json:"allowReserved,omitempty"`
 	Schema          ParameterSchema        `json:"schema"`
 	Example         *interface{}           `json:"example,omitempty"`
 	Examples        map[string]interface{} `json:"examples,omitempty"`
@@ -42,33 +42,33 @@ type ParameterSchema struct {
 	Examples    []interface{} `json:"examples,omitempty"`
 	Required    *bool         `json:"required,omitempty"`
 	Nullable    *bool         `json:"nullable,omitempty"`
-	ReadOnly    *bool         `json:"read_only,omitempty"`
-	WriteOnly   *bool         `json:"write_only,omitempty"`
+	ReadOnly    *bool         `json:"readOnly,omitempty"`
+	WriteOnly   *bool         `json:"writeOnly,omitempty"`
 	Deprecated  *bool         `json:"deprecated,omitempty"`
 
 	Minimum          *float64 `json:"minimum,omitempty"`
 	Maximum          *float64 `json:"maximum,omitempty"`
-	ExclusiveMinimum *bool    `json:"exclusive_minimum,omitempty"`
-	ExclusiveMaximum *bool    `json:"exclusive_maximum,omitempty"`
+	ExclusiveMinimum *bool    `json:"exclusiveMinimum,omitempty"`
+	ExclusiveMaximum *bool    `json:"exclusiveMaximum,omitempty"`
 
-	MinLength *float64 `json:"min_length,omitempty"`
-	MaxLength *float64 `json:"max_length,omitempty"`
+	MinLength *float64 `json:"minLength,omitempty"`
+	MaxLength *float64 `json:"maxLength,omitempty"`
 	Pattern   *string  `json:"pattern,omitempty"`
 
-	MinItems    *float64         `json:"min_items,omitempty"`
-	MaxItems    *float64         `json:"max_items,omitempty"`
-	UniqueItems *bool            `json:"unique_items,omitempty"`
+	MinItems    *float64         `json:"minItems,omitempty"`
+	MaxItems    *float64         `json:"maxItems,omitempty"`
+	UniqueItems *bool            `json:"uniqueItems,omitempty"`
 	Items       *ParameterSchema `json:"items,omitempty"`
 
 	Enum []interface{} `json:"enum,omitempty"`
 
 	Properties                  map[string]ParameterSchema `json:"properties,omitempty"`
-	RequiredFields              []string                   `json:"required_fields,omitempty"`
-	AdditionalProperties        *ParameterSchema           `json:"additional_properties,omitempty"`
-	AdditionalPropertiesAllowed *bool                      `json:"additional_properties_allowed,omitempty"`
-	OneOf                       []ParameterSchema          `json:"one_of,omitempty"`
-	AnyOf                       []ParameterSchema          `json:"any_of,omitempty"`
-	AllOf                       []ParameterSchema          `json:"all_of,omitempty"`
+	RequiredFields              []string                   `json:"required,omitempty"`
+	AdditionalProperties        *ParameterSchema           `json:"additionalProperties,omitempty"`
+	AdditionalPropertiesAllowed *bool                      `json:"additionalPropertiesAllowed,omitempty"`
+	OneOf                       []ParameterSchema          `json:"oneOf,omitempty"`
+	AnyOf                       []ParameterSchema          `json:"anyOf,omitempty"`
+	AllOf                       []ParameterSchema          `json:"allOf,omitempty"`
 	Not                         *ParameterSchema           `json:"not,omitempty"`
 }
 
@@ -116,3 +116,4 @@ type ExternalDocs struct {
 	Description string `json:"description,omitempty"`
 	URL         string `json:"url"`
 }
+

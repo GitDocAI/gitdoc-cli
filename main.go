@@ -14,7 +14,7 @@ import (
 
 func main() {
 	// Define the command-line flags and their default values
-	var serveInput, deployInput, deployOutput string
+	var serveInput string
 
 	// ################### Root Command ###################
 	// Create the root command
@@ -46,40 +46,23 @@ Available commands:
 	devCmd.Flags().StringVar(&serveInput, "input", utils.GetMyPath(), "Path to the source folder containing MDX and gitdocai.config.json")
 	rootCmd.AddCommand(devCmd)
 
-	// #################### Preview Command (Hidden - Cloud) ###################
-	// Create the preview command
-	previewCmd := &cobra.Command{
-		Use:   "preview",
-		Short: "Serve the documentation in production mode (Cloud)",
-		Hidden: true,
+	// #################### Production Command ###################
+	// Create the prod command
+	prodCmd := &cobra.Command{
+		Use:   "prod",
+		Short: "Serve the documentation in production mode",
 		RunE: func(command *cobra.Command, args []string) error {
-			// In preview mode, always use the flusher's docs directory
+			// In prod mode, always use the flusher's docs directory
 			homeDir, err := os.UserHomeDir()
 			if err != nil {
 				return fmt.Errorf("failed to get home directory: %v", err)
 			}
-			previewInput := filepath.Join(homeDir, ".gitdocai", "docsrc")
-			return cmd.Serve(previewInput, "preview")
+			prodInput := filepath.Join(homeDir, ".gitdocai", "docs")
+			return cmd.Serve(prodInput, "prod")
 		},
 	}
-	// No input flag for preview - it always uses ~/.gitdocai/docsrc
-	rootCmd.AddCommand(previewCmd)
-
-	// ################### Deploy Command ###################
-	// Create the deploy command
-	deployCmd := &cobra.Command{
-		Use:    "deploy",
-		Short:  "[Internal] Deploy a GitDocAI project",
-		Hidden: true,
-		RunE: func(command *cobra.Command, args []string) error {
-			return cmd.Deploy(deployInput, deployOutput, false)
-		},
-	}
-
-	deployCmd.Flags().StringVar(&deployInput, "input", "", "Path to the source folder")
-	deployCmd.Flags().StringVar(&deployOutput, "output", "", "Path to the output folder")
-	rootCmd.AddCommand(deployCmd)
-
+	// No input flag for prod - it always uses ~/.gitdocai/docs
+	rootCmd.AddCommand(prodCmd)
 	// ################### Init Sample Command ###################
 	// Add the init-sample command to the root command
 	initCmd := &cobra.Command{
@@ -134,4 +117,6 @@ Available commands:
 		fmt.Println(err)
 		os.Exit(1)
 	}
+
 }
+
