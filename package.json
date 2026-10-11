@@ -1,0 +1,44 @@
+{
+  "name": "gitdoc-cli",
+  "version": "0.1.0",
+  "description": "gitdoc: write documentation as files, preview it live and publish it to a GitDocAI server.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "gitdoc": "dist/gitdoc.js"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GitDocAI/gitdocai-cli.git"
+  },
+  "homepage": "https://gitdoc.ai",
+  "keywords": [
+    "documentation",
+    "docs-as-code",
+    "mdx",
+    "markdown",
+    "cli",
+    "ai-agents",
+    "claude-code",
+    "self-hosted"
+  ],
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test",
+    "prepublishOnly": "npm run typecheck && npm test"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "esbuild": "^0.24.2",
+    "typescript": "~5.6.2"
+  }
+}

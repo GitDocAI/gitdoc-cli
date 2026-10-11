@@ -1,7 +1,0 @@
-*.go
-go.mod
-go.sum
-.git/
-.github/
-*.md
-!README.md
