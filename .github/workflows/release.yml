@@ -1,32 +1,46 @@
 name: Release
 
-# Publishes to npm when a version tag is pushed:  git tag v0.1.0 && git push --tags
+# Publishes gitdoc-cli to npm when a GitHub Release is published. The version
+# is the release tag (v0.1.0 → 0.1.0).
 on:
-  push:
-    tags:
-      - 'v*'
-
-permissions:
-  contents: read
-  id-token: write # npm provenance
+  release:
+    types: [published]
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          registry-url: https://registry.npmjs.org
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
           cache: npm
+
       - run: npm ci
-      - name: Tag must match package.json
+
+      - name: Version from the tag
+        env:
+          VERSION: ${{ github.ref_name }}
         run: |
-          [ "v$(node -p "require('./package.json').version")" = "${GITHUB_REF_NAME}" ] \
-            || { echo "tag ${GITHUB_REF_NAME} does not match package.json"; exit 1; }
+          VERSION="${VERSION#v}"
+          npm pkg set version="$VERSION"
+
       - run: npm run typecheck
       - run: npm test
-      - run: npm publish --access public --provenance
+
+      # Same mechanism as before: an .npmrc that reads the token from NPM_TOKEN.
+      - name: Publish
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          echo '//registry.npmjs.org/:_authToken=${NPM_TOKEN}' > .npmrc
+
+          # A pre-release must not become `latest`.
+          if [ "$PRERELEASE" = "true" ]; then
+            npm publish --tag next --access public
+          else
+            npm publish --access public
+          fi
