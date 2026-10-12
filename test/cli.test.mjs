@@ -85,7 +85,7 @@ test('connect saves the token owner-only and publish sends a valid archive', asy
 
   const { srv, seen, url } = await fakeServer((req, res) => {
     res.writeHead(200, { 'content-type': 'application/json' })
-    res.end(JSON.stringify({ ok: true, hostname: 'acme-docs.localhost', result: { status: 'ok', rendered_pages: 1, duration_ms: 5, errors: [] } }))
+    res.end(JSON.stringify({ ok: true, hostname: 'acme-docs.localhost', result: { status: 'ok', rendered_pages: 1, duration_ms: 5, errors: [] }, search: { backend: 'opensearch', indexed: 1, semantic: true } }))
   })
   try {
     const env = { GITDOC_CONFIG_DIR: config }
@@ -98,6 +98,7 @@ test('connect saves the token owner-only and publish sends a valid archive', asy
     const p = await run(['publish', dir], { env })
     assert.equal(p.code, 0, p.err)
     assert.match(p.out, /acme-docs\.localhost/)
+    assert.match(p.out, /search: indexed 1 pages \(opensearch, with vectors\)/, 'the publish reports its ingestion')
 
     const req = seen.find((s) => s.url.startsWith('/api/publish'))
     assert.ok(req, 'the server received a publish')

@@ -140,6 +140,15 @@ async function publish(pos: string[], flags: Record<string, string | boolean>) {
 
   const r = data?.result ?? {}
   console.log(`\nPublished (${r.status ?? 'ok'}): ${r.rendered_pages ?? '?'} pages in ${r.duration_ms ?? '?'} ms`)
+  // Ingestion happens on the server as part of the publish: say what it did.
+  const ix = data?.search
+  if (ix?.error) {
+    console.log(`  search: NOT indexed (${ix.error}). The site is live; fix the search backend and publish again.`)
+  } else if (ix) {
+    const how = ix.semantic ? 'with vectors' : 'text only'
+    console.log(`  search: indexed ${ix.indexed} pages (${ix.backend}, ${how})`)
+    if (ix.warning) console.log(`  search: ${ix.warning}`)
+  }
   if (data?.hostname) {
     console.log(`  site: ${siteUrl(server, data.hostname)}`)
     // Pin the folder to its site, so later publishes can't drift to another one.
