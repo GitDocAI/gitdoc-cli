@@ -1,5 +1,5 @@
 {
-  "name": "gitdoc-cli",
+  "name": "@gitdocai/cli",
   "version": "0.1.0",
   "description": "gitdoc: write documentation as files, preview it live and publish it to a GitDocAI server.",
   "license": "Apache-2.0",
@@ -35,6 +35,9 @@
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --test",
     "prepublishOnly": "npm run typecheck && npm test"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

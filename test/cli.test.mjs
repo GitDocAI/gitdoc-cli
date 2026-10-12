@@ -342,8 +342,9 @@ test('dev refuses an engine of an unsupported major version', async () => {
   reg.srv.close()
 })
 
-test('the package is gitdoc-cli and installs the gitdoc command', () => {
+test('the package is @gitdocai/cli and installs the gitdoc command', () => {
   const pkg = JSON.parse(readFileSync('package.json', 'utf-8'))
-  assert.equal(pkg.name, 'gitdoc-cli')
+  assert.equal(pkg.name, '@gitdocai/cli')
+  assert.equal(pkg.publishConfig.access, 'public', 'a scoped package is private unless told otherwise')
   assert.deepEqual(Object.keys(pkg.bin), ['gitdoc'])
 })

@@ -64,7 +64,7 @@ async function download(): Promise<string> {
   const major = Number(info.version.split('.')[0])
   if (major !== ENGINE_MAJOR) {
     throw new Error(
-      `the latest ${PACKAGE} is ${info.version}, which this gitdoc does not support; update it with: npm i -g gitdoc-cli`,
+      `the latest ${PACKAGE} is ${info.version}, which this gitdoc does not support; update it with: npm i -g @gitdocai/cli`,
     )
   }
   const dest = join(cacheDir(), 'engine', info.version)
