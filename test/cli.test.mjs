@@ -120,6 +120,39 @@ test('connect saves the token owner-only and publish sends a valid archive', asy
   }
 })
 
+test('publish keeps very long file names (OpenAPI-style pages)', async () => {
+  const config = tmp()
+  const dir = join(tmp(), 'docs')
+  await run(['init', dir, '--name', 'Long'])
+  // A basename over 100 bytes cannot be split by ustar: it needs a PAX header.
+  const long = 'delete-control-planeapiv1v1documentationorganization-iddocumentation-idversionversion-idsectionsection-identryentry-id'
+  const nested = `v1/openapi/${'deep-folder-name-'.repeat(8)}`
+  mkdirSync(join(dir, nested), { recursive: true })
+  writeFileSync(join(dir, `v1/openapi/${long}.mdx`), '---\ntitle: Long\n---\n\nbody\n')
+  writeFileSync(join(dir, nested, `${long}.mdx`), '---\ntitle: Deeper\n---\n\nbody\n')
+  const { srv, seen, url } = await fakeServer((_q, res) => {
+    res.writeHead(200, { 'content-type': 'application/json' })
+    res.end(JSON.stringify({ ok: true, hostname: 'long.localhost', result: { status: 'ok', rendered_pages: 3, errors: [] } }))
+  })
+  try {
+    const env = { GITDOC_CONFIG_DIR: config }
+    await run(['connect', url, '--token', 't', '--dir', dir], { env })
+    const p = await run(['publish', dir], { env })
+    assert.equal(p.code, 0, p.err)
+    const file = join(tmp(), 'long.tar.gz')
+    writeFileSync(file, seen.find((x) => x.url.startsWith('/api/publish')).body)
+    const names = execFileSync('tar', ['-tzf', file], { encoding: 'utf-8' }).split('\n').filter(Boolean)
+    assert.ok(names.includes(`v1/openapi/${long}.mdx`), 'the long basename survives')
+    assert.ok(names.includes(`${nested}/${long}.mdx`), 'and so does a long directory plus a long basename')
+    // Extracting gives back exactly the file that was sent.
+    const out = tmp()
+    execFileSync('tar', ['-xzf', file, '-C', out])
+    assert.match(readFileSync(join(out, nested, `${long}.mdx`), 'utf-8'), /title: Deeper/)
+  } finally {
+    srv.close()
+  }
+})
+
 test('publish --dry-run sends nothing', async () => {
   const config = tmp()
   const dir = join(tmp(), 'docs')
