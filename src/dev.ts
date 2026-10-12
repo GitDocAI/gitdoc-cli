@@ -55,7 +55,7 @@ export async function dev(pos: string[], flags: Record<string, string | boolean>
   if (!existsSync(join(dir, 'gitdocai.json'))) {
     throw new UserError(`no gitdocai.json in ${dir}. Create one with: gitdoc init ${pos[0] ?? '.'}`)
   }
-  const engine = loadEngine()
+  const engine = await loadEngine()
   const wanted = Number(typeof flags.port === 'string' ? flags.port : 3000)
   const innerPort = await freePort()
   const token = randomBytes(16).toString('hex')

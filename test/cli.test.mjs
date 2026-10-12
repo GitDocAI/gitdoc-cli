@@ -206,9 +206,106 @@ test('setup installs the skill under the name gitdoc and replaces the old one', 
 test('dev without the engine says how to point at it', async () => {
   const dir = join(tmp(), 'docs')
   await run(['init', dir, '--name', 'X'])
-  const r = await run(['dev', dir], { env: { GITDOC_CONFIG_DIR: tmp() } })
+  const r = await run(['dev', dir], { env: { GITDOC_CONFIG_DIR: tmp(), GITDOC_CACHE_DIR: tmp(), GITDOC_NO_DOWNLOAD: '1' } })
   assert.equal(r.code, 1)
   assert.match(r.err, /GITDOC_ENGINE_SERVER/)
+  assert.match(r.err, /download is disabled/)
+})
+
+/** A fake npm registry serving one engine package; counts what it is asked. */
+async function fakeRegistry({ corrupt = false, version = '0.1.0' } = {}) {
+  const { createHash } = await import('node:crypto')
+  const pkg = tmp()
+  mkdirSync(join(pkg, 'package/server'), { recursive: true })
+  writeFileSync(join(pkg, 'package/package.json'), JSON.stringify({ name: '@gitdocai/engine', version }))
+  writeFileSync(join(pkg, 'package/engine.json'), JSON.stringify({ server: 'server/entry.mjs', renderCli: 'render.js' }))
+  writeFileSync(join(pkg, 'package/render.js'), '// renderer\n')
+  // A stand-in server: answers the readiness probe and accepts a publish.
+  writeFileSync(
+    join(pkg, 'package/server/entry.mjs'),
+    `import http from 'node:http'
+http.createServer((q, r) => {
+  r.setHeader('content-type', 'application/json')
+  r.end(JSON.stringify({ ok: true, result: { rendered_pages: 1, duration_ms: 1, errors: [] } }))
+}).listen(Number(process.env.PORT), process.env.HOST)\n`,
+  )
+  const tgz = join(tmp(), 'engine.tgz')
+  execFileSync('tar', ['-czf', tgz, '-C', pkg, 'package'])
+  const bytes = readFileSync(tgz)
+  const integrity = 'sha512-' + createHash('sha512').update(corrupt ? 'something else' : bytes).digest('base64')
+  const hits = []
+  const f = await fakeServer((req, res) => {
+    hits.push(req.url)
+    if (req.url === '/@gitdocai%2Fengine/latest') {
+      res.setHeader('content-type', 'application/json')
+      res.end(JSON.stringify({ name: '@gitdocai/engine', version, dist: { tarball: `${f.url}/engine.tgz`, integrity } }))
+    } else if (req.url === '/engine.tgz') {
+      res.end(bytes)
+    } else {
+      res.writeHead(404).end()
+    }
+  })
+  return { ...f, hits }
+}
+
+/** Start `gitdoc dev`, wait until it prints its URL, stop it; returns stdout/stderr. */
+function devUntilReady(dir, env) {
+  return new Promise((ok) => {
+    const p = spawn(process.execPath, [BIN, 'dev', dir, '--port', '47311'], {
+      env: { PATH: process.env.PATH, ...env },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    let out = ''
+    let err = ''
+    const stop = () => p.kill()
+    p.stdout.on('data', (d) => {
+      out += d
+      if (out.includes('Local:')) stop()
+    })
+    p.stderr.on('data', (d) => (err += d))
+    p.on('close', (code) => ok({ code, out, err }))
+  })
+}
+
+test('dev downloads the engine once, verifies it, and reuses the cache', async () => {
+  const reg = await fakeRegistry()
+  const dir = join(tmp(), 'docs')
+  await run(['init', dir, '--name', 'X'])
+  const cache = tmp()
+  const env = { GITDOC_CONFIG_DIR: tmp(), GITDOC_CACHE_DIR: cache, GITDOC_REGISTRY: reg.url }
+
+  const first = await devUntilReady(dir, env)
+  assert.match(first.out, /Local:/, first.err)
+  assert.match(first.err, /engine 0\.1\.0 ready/)
+  assert.ok(existsSync(join(cache, 'engine/0.1.0/server/entry.mjs')))
+  assert.deepEqual(reg.hits, ['/@gitdocai%2Fengine/latest', '/engine.tgz'])
+
+  const second = await devUntilReady(dir, env)
+  assert.match(second.out, /Local:/, second.err)
+  assert.equal(reg.hits.length, 2, 'the cached engine needs no network')
+  reg.srv.close()
+})
+
+test('dev refuses an engine whose checksum does not match', async () => {
+  const reg = await fakeRegistry({ corrupt: true })
+  const dir = join(tmp(), 'docs')
+  await run(['init', dir, '--name', 'X'])
+  const cache = tmp()
+  const r = await run(['dev', dir], { env: { GITDOC_CONFIG_DIR: tmp(), GITDOC_CACHE_DIR: cache, GITDOC_REGISTRY: reg.url } })
+  assert.equal(r.code, 1)
+  assert.match(r.err, /does not match its checksum/)
+  assert.ok(!existsSync(join(cache, 'engine/0.1.0')))
+  reg.srv.close()
+})
+
+test('dev refuses an engine of an unsupported major version', async () => {
+  const reg = await fakeRegistry({ version: '3.0.0' })
+  const dir = join(tmp(), 'docs')
+  await run(['init', dir, '--name', 'X'])
+  const r = await run(['dev', dir], { env: { GITDOC_CONFIG_DIR: tmp(), GITDOC_CACHE_DIR: tmp(), GITDOC_REGISTRY: reg.url } })
+  assert.equal(r.code, 1)
+  assert.match(r.err, /does not support/)
+  reg.srv.close()
 })
 
 test('the package is gitdoc-cli and installs the gitdoc command', () => {
