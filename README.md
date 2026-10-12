@@ -54,14 +54,16 @@ installs a skill for Claude Code. From then on you can say "I want to write docu
 
 `gitdoc` talks to a GitDocAI server over HTTP (`POST /api/publish`, `GET /api/sites`). The server is a separate program with its own repository and license: [GitDocAI/GitDoc](https://github.com/GitDocAI/GitDoc). This CLI never bundles or imports it.
 
-`gitdoc dev` runs that server locally as a child process. Build it once (`npm run build` in that repository produces an `engine/` directory) and point the CLI at it:
+`gitdoc dev` runs that server locally as a child process. The first time, the CLI downloads the prebuilt engine, [`@gitdocai/engine`](https://www.npmjs.com/package/@gitdocai/engine) (about 4 MB), from the npm registry. It checks the checksum, unpacks it into `~/.cache/gitdoc/engine/<version>` and reuses it from then on without touching the network. Delete that folder to fetch a newer one.
+
+To use your own build instead (`npm run build` in the GitDoc repository produces an `engine/` directory), point the CLI at it. This takes precedence over the cache:
 
 ```bash
 export GITDOC_ENGINE_SERVER=/path/to/GitDoc/engine/server/entry.mjs
 export GITDOC_ENGINE_RENDER=/path/to/GitDoc/engine/render.js
 ```
 
-or save the same two paths as JSON (`{"server": "...", "renderCli": "..."}`) in `~/.config/gitdoc/engine.json`. The engine is self-contained: it can be moved to any directory. Publishing to a server does not need it.
+or save the same two paths as JSON (`{"server": "...", "renderCli": "..."}`) in `~/.config/gitdoc/engine.json`. Set `GITDOC_NO_DOWNLOAD=1` to forbid the download (air-gapped machines); `GITDOC_REGISTRY` points at a private npm registry. Publishing to a server does not need the engine.
 
 ## Development
 
