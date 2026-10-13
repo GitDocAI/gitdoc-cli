@@ -247,7 +247,7 @@ test('dev without the engine says how to point at it', async () => {
 })
 
 /** A fake npm registry serving one engine package; counts what it is asked. */
-async function fakeRegistry({ corrupt = false, version = '0.1.0' } = {}) {
+async function fakeRegistry({ corrupt = false, version = '1.0.0' } = {}) {
   const { createHash } = await import('node:crypto')
   const pkg = tmp()
   mkdirSync(join(pkg, 'package/server'), { recursive: true })
@@ -310,8 +310,8 @@ test('dev downloads the engine once, verifies it, and reuses the cache', async (
 
   const first = await devUntilReady(dir, env)
   assert.match(first.out, /Local:/, first.err)
-  assert.match(first.err, /engine 0\.1\.0 ready/)
-  assert.ok(existsSync(join(cache, 'engine/0.1.0/server/entry.mjs')))
+  assert.match(first.err, /engine 1\.0\.0 ready/)
+  assert.ok(existsSync(join(cache, 'engine/1.0.0/server/entry.mjs')))
   assert.deepEqual(reg.hits, ['/@gitdocai%2Fengine/latest', '/engine.tgz'])
 
   const second = await devUntilReady(dir, env)
@@ -328,17 +328,29 @@ test('dev refuses an engine whose checksum does not match', async () => {
   const r = await run(['dev', dir], { env: { GITDOC_CONFIG_DIR: tmp(), GITDOC_CACHE_DIR: cache, GITDOC_REGISTRY: reg.url } })
   assert.equal(r.code, 1)
   assert.match(r.err, /does not match its checksum/)
-  assert.ok(!existsSync(join(cache, 'engine/0.1.0')))
+  assert.ok(!existsSync(join(cache, 'engine/1.0.0')))
   reg.srv.close()
 })
 
-test('dev refuses an engine of an unsupported major version', async () => {
+test('dev says to update the CLI when the engine is of a newer major version', async () => {
   const reg = await fakeRegistry({ version: '3.0.0' })
   const dir = join(tmp(), 'docs')
   await run(['init', dir, '--name', 'X'])
   const r = await run(['dev', dir], { env: { GITDOC_CONFIG_DIR: tmp(), GITDOC_CACHE_DIR: tmp(), GITDOC_REGISTRY: reg.url } })
   assert.equal(r.code, 1)
-  assert.match(r.err, /does not support/)
+  assert.match(r.err, /needs a newer gitdoc/)
+  assert.match(r.err, /npm i -g @gitdocai\/cli/)
+  reg.srv.close()
+})
+
+test('dev explains an engine that is older than the CLI supports', async () => {
+  const reg = await fakeRegistry({ version: '0.1.0' })
+  const dir = join(tmp(), 'docs')
+  await run(['init', dir, '--name', 'X'])
+  const r = await run(['dev', dir], { env: { GITDOC_CONFIG_DIR: tmp(), GITDOC_CACHE_DIR: tmp(), GITDOC_REGISTRY: reg.url } })
+  assert.equal(r.code, 1)
+  assert.match(r.err, /older than the engine 1\.x/)
+  assert.doesNotMatch(r.err, /npm i -g/, 'updating the CLI would not help here')
   reg.srv.close()
 })
 

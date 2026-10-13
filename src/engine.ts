@@ -18,7 +18,7 @@ export interface Engine {
 /** The npm package that carries the engine (a build of github.com/GitDocAI/GitDoc). */
 const PACKAGE = process.env.GITDOC_ENGINE_PACKAGE || '@gitdocai/engine'
 /** Engines of this major version speak the protocol this CLI expects. */
-const ENGINE_MAJOR = 0
+const ENGINE_MAJOR = 1
 const MAX_DOWNLOAD = 150 * 1024 * 1024
 
 function cacheDir(): string {
@@ -64,7 +64,9 @@ async function download(): Promise<string> {
   const major = Number(info.version.split('.')[0])
   if (major !== ENGINE_MAJOR) {
     throw new Error(
-      `the latest ${PACKAGE} is ${info.version}, which this gitdoc does not support; update it with: npm i -g @gitdocai/cli`,
+      major > ENGINE_MAJOR
+        ? `the latest ${PACKAGE} is ${info.version}, which needs a newer gitdoc (this one runs engine ${ENGINE_MAJOR}.x); update it with: npm i -g @gitdocai/cli`
+        : `the latest ${PACKAGE} is ${info.version}, older than the engine ${ENGINE_MAJOR}.x this gitdoc needs; use your own build (GITDOC_ENGINE_SERVER, GITDOC_ENGINE_RENDER)`,
     )
   }
   const dest = join(cacheDir(), 'engine', info.version)
